@@ -44,7 +44,12 @@ fn digest_entries(alg: Algorithm, entries: &[ManifestEntry]) -> String {
 }
 
 fn rel(root: &Path, p: &Path) -> String {
-    p.strip_prefix(root).unwrap_or(p).components().map(|c| c.as_os_str().to_string_lossy().to_string()).collect::<Vec<_>>().join("/")
+    p.strip_prefix(root)
+        .unwrap_or(p)
+        .components()
+        .map(|c| c.as_os_str().to_string_lossy().to_string())
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 /// Build a manifest for `files` (all under `root`, or absolute).
@@ -100,15 +105,21 @@ pub struct VerifyReport {
 
 impl VerifyReport {
     pub fn all_ok(&self) -> bool {
-        self.manifest_digest_ok && self.extra.is_empty() && self.results.iter().all(|r| r.status == EntryStatus::Ok)
+        self.manifest_digest_ok
+            && self.extra.is_empty()
+            && self.results.iter().all(|r| r.status == EntryStatus::Ok)
     }
 }
 
 pub fn load(path: &Path) -> Result<Manifest> {
     let b = std::fs::read(path).map_err(|e| MetaError::io(path, e))?;
-    let m: Manifest = serde_json::from_slice(&b).map_err(|e| MetaError::InvalidArgument(format!("not a valid manifest: {e}")))?;
+    let m: Manifest = serde_json::from_slice(&b)
+        .map_err(|e| MetaError::InvalidArgument(format!("not a valid manifest: {e}")))?;
     if !m.schema.starts_with("metadata.manifest/") {
-        return Err(MetaError::InvalidArgument(format!("unknown manifest schema '{}'", m.schema)));
+        return Err(MetaError::InvalidArgument(format!(
+            "unknown manifest schema '{}'",
+            m.schema
+        )));
     }
     Ok(m)
 }
@@ -119,7 +130,9 @@ pub fn verify(m: &Manifest, root: &Path, extra_files: Option<&[PathBuf]>) -> Ver
     let mut results = vec![];
     for e in &m.entries {
         // Refuse entries that escape the root.
-        let safe = !e.path.starts_with('/') && !e.path.split('/').any(|c| c == "..") && !e.path.contains(':');
+        let safe = !e.path.starts_with('/')
+            && !e.path.split('/').any(|c| c == "..")
+            && !e.path.contains(':');
         let p = root.join(&e.path);
         let (status, actual) = if !safe {
             (EntryStatus::Unreadable, None)
@@ -132,15 +145,28 @@ pub fn verify(m: &Manifest, root: &Path, extra_files: Option<&[PathBuf]>) -> Ver
                 Err(_) => (EntryStatus::Unreadable, None),
             }
         };
-        results.push(EntryResult { path: e.path.clone(), status, expected: e.hash.clone(), actual });
+        results.push(EntryResult {
+            path: e.path.clone(),
+            status,
+            expected: e.hash.clone(),
+            actual,
+        });
     }
     let extra = extra_files
         .map(|fs| {
-            let known: std::collections::HashSet<&str> = m.entries.iter().map(|e| e.path.as_str()).collect();
-            fs.iter().map(|p| rel(root, p)).filter(|r| !known.contains(r.as_str())).collect()
+            let known: std::collections::HashSet<&str> =
+                m.entries.iter().map(|e| e.path.as_str()).collect();
+            fs.iter()
+                .map(|p| rel(root, p))
+                .filter(|r| !known.contains(r.as_str()))
+                .collect()
         })
         .unwrap_or_default();
-    VerifyReport { manifest_digest_ok, results, extra }
+    VerifyReport {
+        manifest_digest_ok,
+        results,
+        extra,
+    }
 }
 
 #[cfg(test)]
@@ -181,7 +207,10 @@ mod tests {
         let mut m = create(d.path(), &files, Algorithm::Sha256).unwrap();
         m.entries[0].path = "../../etc/passwd".into();
         m.entries_digest = digest_entries(m.algorithm, &m.entries);
-        assert_eq!(verify(&m, d.path(), None).results[0].status, EntryStatus::Unreadable);
+        assert_eq!(
+            verify(&m, d.path(), None).results[0].status,
+            EntryStatus::Unreadable
+        );
     }
     #[test]
     fn flags_extra_files() {

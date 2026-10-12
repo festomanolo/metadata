@@ -13,7 +13,7 @@ use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-pub use backends::{Backends, BackendStatus};
+pub use backends::{BackendStatus, Backends};
 pub use scan::{collect_files, ScanOptions};
 
 /// Resource limits protecting against hostile input.
@@ -62,7 +62,15 @@ pub struct Options {
 
 impl Default for Options {
     fn default() -> Self {
-        Options { all: false, deep: false, hash: true, use_external: true, timeout_secs: 30, limits: Limits::default(), cancel: None }
+        Options {
+            all: false,
+            deep: false,
+            hash: true,
+            use_external: true,
+            timeout_secs: 30,
+            limits: Limits::default(),
+            cancel: None,
+        }
     }
 }
 
@@ -76,7 +84,10 @@ pub struct Extraction {
 
 impl Extraction {
     pub fn warn(&mut self, backend: &str, msg: impl Into<String>) {
-        self.warnings.push(Warning { backend: backend.into(), message: msg.into() });
+        self.warnings.push(Warning {
+            backend: backend.into(),
+            message: msg.into(),
+        });
     }
 }
 
@@ -87,7 +98,10 @@ pub struct Engine {
 
 impl Engine {
     pub fn new(opts: Options) -> Self {
-        Engine { backends: Backends::discover(), opts }
+        Engine {
+            backends: Backends::discover(),
+            opts,
+        }
     }
 
     /// Never fails: problems are recorded in `FileReport::error` / `warnings`.
@@ -127,23 +141,39 @@ impl Engine {
         report.format = det.info.clone();
         let mut ex = Extraction::default();
         native::extract(path, &det.info, &self.opts, &mut ex);
-        report.backends.push(BackendUsed { name: "native".into(), version: env!("CARGO_PKG_VERSION").into() });
+        report.backends.push(BackendUsed {
+            name: "native".into(),
+            version: env!("CARGO_PKG_VERSION").into(),
+        });
         if self.opts.use_external {
-            self.backends.extract_external(path, &det.info, &self.opts, &mut ex, &mut report.backends);
+            self.backends.extract_external(
+                path,
+                &det.info,
+                &self.opts,
+                &mut ex,
+                &mut report.backends,
+            );
         }
         if det.info.extension_match == metadata_core::ExtensionMatch::Mismatch {
-            ex.warn("native", format!("extension does not match detected format ({})", det.info.id));
+            ex.warn(
+                "native",
+                format!("extension does not match detected format ({})", det.info.id),
+            );
         }
         // Dedupe identical fields reported by several backends (keep first = most trusted).
         let mut seen = std::collections::HashSet::new();
-        ex.fields.retain(|f| seen.insert((f.group.clone(), f.name.clone(), f.raw.clone())));
+        ex.fields
+            .retain(|f| seen.insert((f.group.clone(), f.name.clone(), f.raw.clone())));
         report.fields = ex.fields;
         report.warnings = ex.warnings;
         report.unavailable = ex.unavailable;
         if self.opts.hash {
             match hash::sha256_file(path) {
                 Ok(h) => report.sha256 = Some(h),
-                Err(e) => report.warnings.push(Warning { backend: "native".into(), message: format!("hash failed: {e}") }),
+                Err(e) => report.warnings.push(Warning {
+                    backend: "native".into(),
+                    message: format!("hash failed: {e}"),
+                }),
             }
         }
         report

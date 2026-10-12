@@ -13,4 +13,5 @@ serde_json = "1"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
 
 [dev-dependencies]
+metadata-testkit = { path = "../metadata-testkit" }
 tempfile = "3"

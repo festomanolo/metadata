@@ -38,15 +38,21 @@ pub fn config_path() -> PathBuf {
     let base = if cfg!(windows) {
         std::env::var_os("APPDATA").map(PathBuf::from)
     } else {
-        std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
+        std::env::var_os("XDG_CONFIG_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
     };
-    base.unwrap_or_else(|| PathBuf::from(".")).join("metadata").join("config.toml")
+    base.unwrap_or_else(|| PathBuf::from("."))
+        .join("metadata")
+        .join("config.toml")
 }
 
 pub fn load() -> anyhow::Result<Config> {
     let p = config_path();
     match std::fs::read_to_string(&p) {
-        Ok(s) => toml::from_str(&s).map_err(|e| anyhow::anyhow!("invalid config {}: {e}", p.display())),
+        Ok(s) => {
+            toml::from_str(&s).map_err(|e| anyhow::anyhow!("invalid config {}: {e}", p.display()))
+        }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Config::default()),
         Err(e) => Err(anyhow::anyhow!("cannot read config {}: {e}", p.display())),
     }
