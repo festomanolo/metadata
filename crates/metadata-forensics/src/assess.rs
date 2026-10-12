@@ -802,7 +802,9 @@ fn rule_gaps(c: &mut Ctx, emb: &[&Event], start: &Option<DayRange>, end: &Option
 }
 
 fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
-    let key = |root: &Path, r: &FileReport| (rel(root, &r.path), r);
+    fn key<'a>(root: &Path, r: &'a FileReport) -> (String, &'a FileReport) {
+        (rel(root, &r.path), r)
+    }
     let old: BTreeMap<String, &FileReport> = prev.iter().map(|r| key(proot, r)).collect();
     let new: BTreeMap<String, &FileReport> = c.i.reports.iter().map(|r| key(c.i.root, r)).collect();
     let old_hashes: std::collections::HashSet<&str> = prev.iter().filter_map(|r| r.sha256.as_deref()).collect();
