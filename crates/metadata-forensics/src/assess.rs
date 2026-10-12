@@ -789,9 +789,22 @@ fn rule_git(
     }
     let th = c.i.thresholds;
     let secs = |tv: &TimeValue| tv.sort_key().unwrap_or(0);
-    let first = g.commits.iter().min_by_key(|c| secs(&c.author_date)).unwrap();
-    let last = g.commits.iter().max_by_key(|c| secs(&c.author_date)).unwrap();
-    let gev = |cm: &crate::git::Commit, f: &str| Evidence { file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]), field: f.into(), value: cm.author_date.iso.clone(), source: Source::Git };
+    let first = g
+        .commits
+        .iter()
+        .min_by_key(|c| secs(&c.author_date))
+        .unwrap();
+    let last = g
+        .commits
+        .iter()
+        .max_by_key(|c| secs(&c.author_date))
+        .unwrap();
+    let gev = |cm: &crate::git::Commit, f: &str| Evidence {
+        file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]),
+        field: f.into(),
+        value: cm.author_date.iso.clone(),
+        source: Source::Git,
+    };
     if let Some(s) = start {
         let x = secs(&first.author_date);
         if x + tol(true, claim_exact(s), th) < s.start {
@@ -802,8 +815,13 @@ fn rule_git(
                 priority: 3,
                 evidence: vec![gev(first, "first commit author date")],
                 comparison_rule: "first commit - tolerance < claimed start".into(),
-                explanation: "The repository contains commits older than the claimed start date.".into(),
-                benign: vec!["Repository initialised from a template or earlier project.", "Cloned or forked starter code.", "The claimed start date may be approximate."],
+                explanation: "The repository contains commits older than the claimed start date."
+                    .into(),
+                benign: vec![
+                    "Repository initialised from a template or earlier project.",
+                    "Cloned or forked starter code.",
+                    "The claimed start date may be approximate.",
+                ],
                 obs: Confidence::High,
                 interp: Confidence::Low,
                 follow_up: "Ask which commits predate the project and where they came from.",
@@ -825,7 +843,11 @@ fn rule_git(
         }
     }
     if let Some(d) = deadline {
-        let late: Vec<_> = g.commits.iter().filter(|cm| secs(&cm.author_date) - tol(true, claim_exact(d), th) > d.end).collect();
+        let late: Vec<_> = g
+            .commits
+            .iter()
+            .filter(|cm| secs(&cm.author_date) - tol(true, claim_exact(d), th) > d.end)
+            .collect();
         if !late.is_empty() {
             c.push(Draft {
                 rule: "GIT-AFTER-DEADLINE",
@@ -843,7 +865,14 @@ fn rule_git(
         }
     }
     if let Some(n) = now {
-        let fut: Vec<_> = g.commits.iter().filter(|cm| secs(&cm.author_date) > n.secs + th.tolerance_hours * 3600 || secs(&cm.commit_date) > n.secs + th.tolerance_hours * 3600).collect();
+        let fut: Vec<_> = g
+            .commits
+            .iter()
+            .filter(|cm| {
+                secs(&cm.author_date) > n.secs + th.tolerance_hours * 3600
+                    || secs(&cm.commit_date) > n.secs + th.tolerance_hours * 3600
+            })
+            .collect();
         if !fut.is_empty() {
             c.push(Draft {
                 rule: "GIT-FUTURE",
@@ -861,7 +890,8 @@ fn rule_git(
         }
     }
     // child dated before its parent
-    let by_hash: std::collections::HashMap<&str, &crate::git::Commit> = g.commits.iter().map(|cm| (cm.hash.as_str(), cm)).collect();
+    let by_hash: std::collections::HashMap<&str, &crate::git::Commit> =
+        g.commits.iter().map(|cm| (cm.hash.as_str(), cm)).collect();
     let mut back = vec![];
     for cm in &g.commits {
         for p in &cm.parents {
@@ -875,7 +905,10 @@ fn rule_git(
     if !back.is_empty() {
         c.push(Draft {
             rule: "GIT-NONMONOTONIC",
-            title: format!("{} commit(s) are dated earlier than their parent", back.len()),
+            title: format!(
+                "{} commit(s) are dated earlier than their parent",
+                back.len()
+            ),
             severity: Severity::Review,
             priority: 3,
             evidence: back.iter().map(|(cm, pc)| Evidence { file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]), field: "commit date vs parent".into(), value: format!("{} < parent {}", cm.commit_date.iso, pc.commit_date.iso), source: Source::Git }).collect(),
