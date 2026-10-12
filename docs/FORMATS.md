@@ -2,7 +2,7 @@
 
 `metadata capabilities` prints the live version of this table for your machine (it reflects which backends are installed).
 
-*native* = built in. *exiftool\** = passes through the verify-after-write pipeline but is not covered by automated tests against a real ExifTool.
+*native* = built in. *exiftool\** = passes through the verify-after-write pipeline; tested only with a stub script, never against a real ExifTool.
 
 | Format | Detection | Read | Write |
 |---|---|---|---|
