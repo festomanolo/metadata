@@ -374,10 +374,20 @@ mod tests {
         assert!(h.contains("&lt;img src=x onerror"));
         assert!(h.contains("&lt;b&gt;note&lt;/b&gt;"));
         assert!(h.contains("c&lt;1&gt;"));
-        for needle in ["Executive summary", "Evidence inventory", "Limitations", "Could also be", "Reviewer notes", "does not establish academic misconduct"] {
+        for needle in [
+            "Executive summary",
+            "Evidence inventory",
+            "Limitations",
+            "Could also be",
+            "Reviewer notes",
+            "does not establish academic misconduct",
+        ] {
             assert!(h.contains(needle), "{needle}");
         }
-        assert!(!h.contains("http://") && !h.contains("https://"), "no external resources");
+        assert!(
+            !h.contains("http://") && !h.contains("https://"),
+            "no external resources"
+        );
     }
 
     #[test]
@@ -385,12 +395,34 @@ mod tests {
         let a = sample("=cmd|' /C calc'!A0");
         let id = a.findings[0].id.clone();
         let mut st = BTreeMap::new();
-        st.insert(id.clone(), FindingState { status: FindingStatus::Dismissed, note: Some("n".into()), reason: Some("template, reused".into()), updated_at: "2024".into() });
-        let h = html(&ReportInput { assessment: &a, events: &[], states: &st, notes: &[], title: Some("T"), include_timeline: false });
-        assert!(h.contains("Dismissal reason") && h.contains("template, reused") && h.contains("finding dismissed"));
+        st.insert(
+            id.clone(),
+            FindingState {
+                status: FindingStatus::Dismissed,
+                note: Some("n".into()),
+                reason: Some("template, reused".into()),
+                updated_at: "2024".into(),
+            },
+        );
+        let h = html(&ReportInput {
+            assessment: &a,
+            events: &[],
+            states: &st,
+            notes: &[],
+            title: Some("T"),
+            include_timeline: false,
+        });
+        assert!(
+            h.contains("Dismissal reason")
+                && h.contains("template, reused")
+                && h.contains("finding dismissed")
+        );
         let c = findings_csv(&a, &st);
         assert!(c.lines().next().unwrap().starts_with("id,rule"));
         assert!(c.contains("dismissed") && c.contains("\"template, reused\""));
-        assert!(!c.lines().skip(1).any(|l| l.starts_with(['=', '+', '-', '@'])));
+        assert!(!c
+            .lines()
+            .skip(1)
+            .any(|l| l.starts_with(['=', '+', '-', '@'])));
     }
 }
