@@ -140,7 +140,9 @@ impl Stats {
             if stored == 0 && !matches!(r.format.id.as_str(), "binary" | "text" | "source") {
                 s.missing_metadata += 1;
             }
-            if !r.warnings.is_empty() || r.format.extension_match == metadata_core::ExtensionMatch::Mismatch {
+            if !r.warnings.is_empty()
+                || r.format.extension_match == metadata_core::ExtensionMatch::Mismatch
+            {
                 s.needs_review += 1;
             }
             if !r.unavailable.is_empty() || r.format.id == "binary" {
@@ -200,7 +202,11 @@ pub struct App {
 
 impl App {
     pub fn new(root: PathBuf, use_external: bool) -> App {
-        let backends = if use_external { Backends::discover() } else { Backends::none() };
+        let backends = if use_external {
+            Backends::discover()
+        } else {
+            Backends::none()
+        };
         let backend_status = Backends::discover().status();
         App {
             root,
@@ -219,7 +225,11 @@ impl App {
             field_filter: String::new(),
             collapsed: HashSet::new(),
             reveal: false,
-            theme: if std::env::var_os("NO_COLOR").is_some() { ThemeKind::Mono } else { ThemeKind::Dark },
+            theme: if std::env::var_os("NO_COLOR").is_some() {
+                ThemeKind::Mono
+            } else {
+                ThemeKind::Dark
+            },
             show_details: true,
             scan: None,
             status: "Ready. Press ? for help.".into(),
@@ -247,7 +257,14 @@ impl App {
     }
 
     fn engine(&self, cancel: Option<Arc<AtomicBool>>) -> Engine {
-        Engine { backends: self.backends.clone(), opts: Options { use_external: self.use_external, cancel, ..Default::default() } }
+        Engine {
+            backends: self.backends.clone(),
+            opts: Options {
+                use_external: self.use_external,
+                cancel,
+                ..Default::default()
+            },
+        }
     }
 
     pub fn log(&mut self, s: impl Into<String>) {
@@ -267,7 +284,13 @@ impl App {
         let (tx, rx) = channel();
         let p = path.clone();
         std::thread::spawn(move || {
-            let so = ScanOptions { recursive: true, exclude_dirs: [".git", "node_modules", "target", "__pycache__"].map(String::from).to_vec(), ..Default::default() };
+            let so = ScanOptions {
+                recursive: true,
+                exclude_dirs: [".git", "node_modules", "target", "__pycache__"]
+                    .map(String::from)
+                    .to_vec(),
+                ..Default::default()
+            };
             let col = collect_files(std::slice::from_ref(&p), &so);
             let skipped: Vec<(String, String)> = col.skipped.iter().map(|(a, b)| (a.display().to_string(), b.clone())).collect();
             let _ = tx.send(ScanMsg::Progress(0, col.files.len()));
