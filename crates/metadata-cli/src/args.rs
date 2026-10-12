@@ -54,6 +54,9 @@ pub struct Common {
     /// Allow --output to replace an existing file
     #[arg(long)]
     pub force: bool,
+    /// Reuse cached extraction results keyed by file hash and settings (stored in the config dir)
+    #[arg(long)]
+    pub cache: bool,
     /// Include raw/unknown fields and list every archive entry
     #[arg(long)]
     pub all: bool,
@@ -208,6 +211,9 @@ pub enum Cmd {
         /// Keep author names and other personal identifiers in evidence values (masked by default)
         #[arg(long)]
         include_personal: bool,
+        /// Also write a printable HTML report to FILE
+        #[arg(long, value_name = "FILE")]
+        html: Option<PathBuf>,
         /// Hide findings below this level
         #[arg(long, value_parser = ["info", "review", "high"], default_value = "info")]
         min_severity: String,
