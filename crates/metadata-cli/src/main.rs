@@ -119,7 +119,7 @@ pub(crate) fn pick_format(ctx: &Ctx, c: Option<Fmt>, default: Fmt) -> Fmt {
         .unwrap_or(default)
 }
 
-fn engine_for(ctx: &Ctx, c: &Common) -> Engine {
+pub(crate) fn engine_for(ctx: &Ctx, c: &Common) -> Engine {
     let mut l = Limits::default();
     let lc = &ctx.cfg.limits;
     if let Some(v) = lc.max_archive_entries {
