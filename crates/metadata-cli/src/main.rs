@@ -190,8 +190,12 @@ pub(crate) fn engine_for(ctx: &Ctx, c: &Common) -> Engine {
 pub(crate) fn scan_opts(ctx: &Ctx, c: &Common) -> ScanOptions {
     let mut s = ScanOptions {
         recursive: c.recursive,
+        exclude_dirs: c.exclude.clone(),
         ..Default::default()
     };
+    if !c.include_vcs {
+        s.exclude_dirs.push(".git".into());
+    }
     if let Some(j) = c.jobs.or(ctx.cfg.jobs) {
         s.jobs = j.max(1);
     }
