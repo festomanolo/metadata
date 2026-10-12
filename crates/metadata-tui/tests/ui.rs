@@ -77,7 +77,7 @@ fn renders_all_regions_at_80x24_and_120x40() {
         for label in [
             "Overview",
             "Inspect",
-            "Batch Scan",
+            "Scan",
             "Timeline",
             "Compare",
             "Edit",
