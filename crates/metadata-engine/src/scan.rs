@@ -25,6 +25,7 @@ impl Default for ScanOptions {
                 .unwrap_or(4)
                 .min(16),
             include_hidden: true,
+            exclude_dirs: vec![],
         }
     }
 }
