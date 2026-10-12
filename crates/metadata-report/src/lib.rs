@@ -64,15 +64,29 @@ ul{margin:4px 0 0 18px;padding:0}@media print{body{max-width:none;padding:0}.fin
 
 fn finding_html(o: &mut String, f: &Finding, st: Option<&FindingState>) {
     let status = st.map(|s| s.status).unwrap_or(FindingStatus::Open);
-    let cls = if status == FindingStatus::Dismissed { " dismissed" } else { "" };
+    let cls = if status == FindingStatus::Dismissed {
+        " dismissed"
+    } else {
+        ""
+    };
     let _ = write!(o, "<section class=\"finding{cls}\" id=\"{id}\"><h3><span class=\"badge {sc}\">{sl}</span><span class=\"mono\">{id}</span> {title}</h3>", id = esc(&f.id), sc = sev_class(f.severity), sl = sev_label(f.severity), title = esc(&f.title));
-    let _ = write!(o, "<p class=\"dim\">Review priority {}/5 · status: <b>{}</b></p><dl>", f.review_priority, status.as_str());
+    let _ = write!(
+        o,
+        "<p class=\"dim\">Review priority {}/5 · status: <b>{}</b></p><dl>",
+        f.review_priority,
+        status.as_str()
+    );
     let row = |o: &mut String, k: &str, v: &str| {
         let _ = write!(o, "<dt>{}</dt><dd>{}</dd>", esc(k), v);
     };
     row(o, "Why it was flagged", &esc(&f.explanation));
-    row(o, "Comparison rule", &format!("<span class=\"mono\">{}</span>", esc(&f.comparison_rule)));
-    let mut ev = String::from("<table><tr><th>File</th><th>Field</th><th>Value</th><th>Source</th></tr>");
+    row(
+        o,
+        "Comparison rule",
+        &format!("<span class=\"mono\">{}</span>", esc(&f.comparison_rule)),
+    );
+    let mut ev =
+        String::from("<table><tr><th>File</th><th>Field</th><th>Value</th><th>Source</th></tr>");
     for e in &f.evidence {
         let _ = write!(ev, "<tr><td class=\"mono\">{}</td><td class=\"mono\">{}</td><td>{}</td><td>{}</td></tr>", esc(&e.file), esc(&e.field), esc(&e.value), e.source.label());
     }
