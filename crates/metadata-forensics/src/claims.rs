@@ -82,7 +82,10 @@ pub fn parse_claim_time(s: &str) -> Result<TimeValue> {
 
 impl Claims {
     pub fn validate(&self) -> Result<()> {
-        for s in [&self.start, &self.completion, &self.deadline].into_iter().flatten() {
+        for s in [&self.start, &self.completion, &self.deadline]
+            .into_iter()
+            .flatten()
+        {
             parse_claim(s)?;
         }
         for m in &self.milestones {
@@ -90,7 +93,9 @@ impl Claims {
         }
         if let (Some(a), Some(b)) = (&self.start, &self.deadline) {
             if parse_claim(a)?.start > parse_claim(b)?.end {
-                return Err(MetaError::InvalidArgument("claimed start is after the deadline".into()));
+                return Err(MetaError::InvalidArgument(
+                    "claimed start is after the deadline".into(),
+                ));
             }
         }
         Ok(())
@@ -104,12 +109,19 @@ mod tests {
     fn date_only_is_a_whole_day() {
         let r = parse_claim("2024-03-01").unwrap();
         assert_eq!(r.end - r.start, 86_399);
-        assert!(parse_claim("2024-03-01T10:00:00Z").unwrap().start == parse_claim("2024-03-01T10:00:00Z").unwrap().end);
+        assert!(
+            parse_claim("2024-03-01T10:00:00Z").unwrap().start
+                == parse_claim("2024-03-01T10:00:00Z").unwrap().end
+        );
         assert!(parse_claim("soon").is_err());
     }
     #[test]
     fn validate_catches_inverted_range() {
-        let c = Claims { start: Some("2024-05-01".into()), deadline: Some("2024-01-01".into()), ..Default::default() };
+        let c = Claims {
+            start: Some("2024-05-01".into()),
+            deadline: Some("2024-01-01".into()),
+            ..Default::default()
+        };
         assert!(c.validate().is_err());
     }
 }
