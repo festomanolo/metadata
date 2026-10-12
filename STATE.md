@@ -34,7 +34,7 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 | Commands | assess (claims flags/file, --previous, git, redaction default, integrity re-hash, --min-severity) | DONE | JSON+human; HTML PLANNED (M6) |
 | Commands | edit (--set/--remove/--copy-from/--interactive/--dry-run/--in-place/--output-dir/--yes/--accept-signature-loss), clean (--profile privacy/all/gps) | DONE | `cli/edit_cmd.rs`; new copy by default `<stem>.edited.<ext>`, in-place needs --yes + backup `.metadata-backup-<ts>`, ops log `<config dir>/operations.jsonl` |
 | Editing | Native writers: docx/xlsx/pptx core+app props, odt/ods/odp meta, PDF Info (file rewritten), PNG text chunks, JPEG comment + strip | DONE | round-trip verified in `metadata-edit/tests/edit.rs` |
-| Editing | ExifTool write backend | PARTIAL | argv built safely+unit-tested; NOT run against real exiftool; listed as `exiftool*` in capabilities |
+| Editing | ExifTool write backend | PARTIAL | safe argv + stub-script end-to-end tests; NOT run against real exiftool; listed as `exiftool*` in capabilities |
 | Editing | JPEG/TIFF/etc. individual EXIF/IPTC/XMP tag edit, GPS-only removal | PLANNED | needs exiftool |
 | Commands | assess, cases, reports | PLANNED | M5/M6 |
 | Commands | tui [PATH] [--no-scan] [--no-external] | DONE | needs a TTY (errors otherwise); pty smoke-tested |
