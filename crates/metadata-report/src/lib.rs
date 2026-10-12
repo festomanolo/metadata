@@ -169,7 +169,16 @@ pub fn html(i: &ReportInput) -> String {
         let _ = write!(o, "<p>Git history was available: {n} commit(s). Commit dates are written by the committer's clock and can be rewritten.</p>");
     }
     if let Some(g) = &a.integrity {
-        let _ = write!(o, "<p>Evidence integrity: {} ({} files re-hashed after analysis).</p>", if g.unchanged { "<b>inputs unchanged by this analysis</b>" } else { "<b class=\"high\">INPUTS CHANGED DURING ANALYSIS</b>" }, g.files_rehashed);
+        let _ = write!(
+            o,
+            "<p>Evidence integrity: {} ({} files re-hashed after analysis).</p>",
+            if g.unchanged {
+                "<b>inputs unchanged by this analysis</b>"
+            } else {
+                "<b class=\"high\">INPUTS CHANGED DURING ANALYSIS</b>"
+            },
+            g.files_rehashed
+        );
     }
     if a.personal_data_redacted {
         o.push_str("<p class=\"dim\">Personal identifiers (author names, etc.) are masked in this report; location data is not included.</p>");
@@ -185,13 +194,25 @@ pub fn html(i: &ReportInput) -> String {
 
     o.push_str("<h2>Evidence inventory</h2><table><tr><th>Path</th><th>Format</th><th>Size</th><th>SHA-256</th><th>FS modified</th><th>Notes</th></tr>");
     for f in &a.inventory {
-        let notes = if let Some(e) = &f.error { format!("error: {e}") } else if f.extension_match == metadata_core::ExtensionMatch::Mismatch { "extension mismatch".into() } else { String::new() };
+        let notes = if let Some(e) = &f.error {
+            format!("error: {e}")
+        } else if f.extension_match == metadata_core::ExtensionMatch::Mismatch {
+            "extension mismatch".into()
+        } else {
+            String::new()
+        };
         let _ = write!(o, "<tr><td class=\"mono\">{}</td><td>{}</td><td>{}</td><td class=\"mono\">{}</td><td>{}</td><td>{}</td></tr>", esc(&f.path), esc(&f.format), f.size, esc(f.sha256.as_deref().map(|h| &h[..h.len().min(16)]).unwrap_or("")), esc(&f.fs_modified.as_ref().map(|t| t.iso.clone()).unwrap_or_default()), esc(&notes));
     }
     o.push_str("</table><p class=\"dim\">SHA-256 truncated to 16 hex characters here; the JSON export has full hashes. Hashes show content equality, not authorship.</p>");
 
     if !a.project.manifests.is_empty() || a.project.source_file_count > 0 {
-        let langs: String = a.project.languages.iter().map(|(k, v)| format!("{} ({v})", esc(k))).collect::<Vec<_>>().join(", ");
+        let langs: String = a
+            .project
+            .languages
+            .iter()
+            .map(|(k, v)| format!("{} ({v})", esc(k)))
+            .collect::<Vec<_>>()
+            .join(", ");
         let _ = write!(o, "<h2>Project structure</h2><p>{} source file(s): {}. Manifests: {}. README present: {}. Git repository: {}.</p>", a.project.source_file_count, langs, esc(&a.project.manifests.join(", ")), a.project.has_readme, a.project.has_git);
     }
 
@@ -202,7 +223,11 @@ pub fn html(i: &ReportInput) -> String {
         }
         o.push_str("</table>");
         if i.events.len() > 500 {
-            let _ = write!(o, "<p class=\"dim\">{} further events omitted; use the JSON export.</p>", i.events.len() - 500);
+            let _ = write!(
+                o,
+                "<p class=\"dim\">{} further events omitted; use the JSON export.</p>",
+                i.events.len() - 500
+            );
         }
     }
 
