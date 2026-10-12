@@ -156,6 +156,64 @@ pub enum Cmd {
         #[arg(short, long, value_enum)]
         format: Option<Fmt>,
     },
+    /// Build a chronological timeline from embedded, archive, filesystem and git sources (kept separate)
+    Timeline {
+        #[arg(required = true)]
+        paths: Vec<PathBuf>,
+        /// Show only these sources (repeatable): declared, embedded, archive, filesystem, git, intake
+        #[arg(long, value_name = "SOURCE")]
+        source: Vec<String>,
+        /// Do not read git history even if a repository is present
+        #[arg(long)]
+        no_git: bool,
+        /// Add the intake time recorded in a manifest created by `hash --manifest`
+        #[arg(long)]
+        manifest: Option<PathBuf>,
+        /// Claims file (TOML/JSON) whose dates are shown as `declared` events
+        #[arg(long)]
+        claims: Option<PathBuf>,
+        #[command(flatten)]
+        c: Common,
+    },
+    /// Evidence-based review of a project against declared dates; produces findings, not verdicts
+    Assess {
+        /// Project folder (read-only)
+        path: PathBuf,
+        /// Case identifier recorded in the report
+        #[arg(long, default_value = "unnamed")]
+        case: String,
+        #[arg(long)]
+        student: Option<String>,
+        /// Claimed start date (YYYY-MM-DD or RFC 3339)
+        #[arg(long)]
+        start: Option<String>,
+        /// Claimed completion date
+        #[arg(long)]
+        completion: Option<String>,
+        /// Submission deadline
+        #[arg(long)]
+        deadline: Option<String>,
+        /// Claimed milestone `Name=DATE` or `Name=DATE:path-substring` (repeatable)
+        #[arg(long, value_name = "SPEC")]
+        milestone: Vec<String>,
+        /// Claims/thresholds file (TOML or JSON); flags override it
+        #[arg(long)]
+        claims: Option<PathBuf>,
+        /// Previous submission folder to compare against
+        #[arg(long)]
+        previous: Option<PathBuf>,
+        /// Do not read git history
+        #[arg(long)]
+        no_git: bool,
+        /// Keep author names and other personal identifiers in evidence values (masked by default)
+        #[arg(long)]
+        include_personal: bool,
+        /// Hide findings below this level
+        #[arg(long, value_parser = ["info", "review", "high"], default_value = "info")]
+        min_severity: String,
+        #[command(flatten)]
+        c: Common,
+    },
     /// Show format support and which backend handles each format
     Capabilities {
         #[arg(short, long, value_enum)]
