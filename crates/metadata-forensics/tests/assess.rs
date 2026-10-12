@@ -230,8 +230,17 @@ fn ids_are_stable_and_path_relative() {
 fn missing_metadata_is_info_only() {
     let d = tempfile::tempdir().unwrap();
     put(d.path(), "bare.jpg", &kit::jpeg(None, None, 2, 2));
-    let a = run(d.path(), &scan(d.path()), &Claims::default(), "2024-06-02T00:00:00Z");
-    let f = a.findings.iter().find(|f| f.rule == "MISS-METADATA").expect("missing metadata finding");
+    let a = run(
+        d.path(),
+        &scan(d.path()),
+        &Claims::default(),
+        "2024-06-02T00:00:00Z",
+    );
+    let f = a
+        .findings
+        .iter()
+        .find(|f| f.rule == "MISS-METADATA")
+        .expect("missing metadata finding");
     assert_eq!(f.severity, Severity::Info);
     assert!(f.explanation.contains("not evidence"));
 }
@@ -240,26 +249,47 @@ fn missing_metadata_is_info_only() {
 fn uniform_filesystem_times_and_duplicates() {
     let d = tempfile::tempdir().unwrap();
     for i in 0..6 {
-        put(d.path(), &format!("f{i}.txt"), format!("content {i}").as_bytes());
+        put(
+            d.path(),
+            &format!("f{i}.txt"),
+            format!("content {i}").as_bytes(),
+        );
     }
     put(d.path(), "a/same.txt", b"dup");
     put(d.path(), "b/same.txt", b"dup");
     let mut r = scan(d.path());
-    let t = TimeValue::naive(chrono::NaiveDate::from_ymd_opt(2024, 3, 3).unwrap().and_hms_opt(1, 2, 3).unwrap());
+    let t = TimeValue::naive(
+        chrono::NaiveDate::from_ymd_opt(2024, 3, 3)
+            .unwrap()
+            .and_hms_opt(1, 2, 3)
+            .unwrap(),
+    );
     for x in &mut r {
         x.filesystem.modified = Some(t.clone());
     }
     let a = run(d.path(), &r, &Claims::default(), "2024-06-02T00:00:00Z");
-    let uni = a.findings.iter().find(|f| f.rule == "UNI-FS").expect("uniform");
+    let uni = a
+        .findings
+        .iter()
+        .find(|f| f.rule == "UNI-FS")
+        .expect("uniform");
     assert_eq!(uni.severity, Severity::Info);
-    assert!(a.findings.iter().any(|f| f.rule == "DUP-CONTENT" && f.files.len() == 2));
+    assert!(a
+        .findings
+        .iter()
+        .any(|f| f.rule == "DUP-CONTENT" && f.files.len() == 2));
 }
 
 #[test]
 fn extension_mismatch_finding() {
     let d = tempfile::tempdir().unwrap();
     put(d.path(), "report.pdf", &kit::jpeg(None, None, 2, 2));
-    let a = run(d.path(), &scan(d.path()), &Claims::default(), "2024-06-02T00:00:00Z");
+    let a = run(
+        d.path(),
+        &scan(d.path()),
+        &Claims::default(),
+        "2024-06-02T00:00:00Z",
+    );
     assert!(rules(&a).contains(&"FMT-EXT-MISMATCH"));
 }
 
