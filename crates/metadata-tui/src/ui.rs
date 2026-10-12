@@ -1,21 +1,29 @@
 //! Rendering. Reads `App`, never mutates domain state (only list scroll offsets via widgets' local state).
-use crate::app::{App, Focus, InputPurpose, Modal, Row, SortKey, SECTIONS, Section};
+use crate::app::{App, Focus, InputPurpose, Modal, Row, Section, SortKey, SECTIONS};
 use crate::theme::{truecolor, Theme};
 use metadata_forensics::compare::DiffStatus;
 use metadata_forensics::timeline::Source;
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, Clear, Gauge, List, ListItem, ListState, Paragraph, Wrap};
+use ratatui::widgets::{
+    Block, BorderType, Borders, Clear, Gauge, List, ListItem, ListState, Paragraph, Wrap,
+};
 use ratatui::Frame;
 
 pub const MIN_W: u16 = 60;
 pub const MIN_H: u16 = 14;
 
 fn clip(s: &str, w: usize) -> String {
-    let one: String = s.chars().map(|c| if c.is_control() { ' ' } else { c }).collect();
+    let one: String = s
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect();
     if one.chars().count() > w {
-        format!("{}…", one.chars().take(w.saturating_sub(1)).collect::<String>())
+        format!(
+            "{}…",
+            one.chars().take(w.saturating_sub(1)).collect::<String>()
+        )
     } else {
         one
     }
