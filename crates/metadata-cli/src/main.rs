@@ -162,7 +162,7 @@ pub(crate) fn scan_opts(ctx: &Ctx, c: &Common) -> ScanOptions {
     s
 }
 
-struct Scanned {
+pub(crate) struct Scanned {
     reports: Vec<FileReport>,
     skipped: Vec<(String, String)>,
 }
