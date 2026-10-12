@@ -59,7 +59,15 @@ fn exiftool_backend_writes_verifies_and_leaves_original() {
     std::fs::write(&src, kit::jpeg(None, None, 4, 4)).unwrap();
     let before = std::fs::read(&src).unwrap();
     // EXIF:Artist is not natively writable for JPEG → must route to exiftool
-    let p = plan(&e, &src, &EditRequest { ops: vec![Op::Set("EXIF:Artist".into(), "Zed; $(touch pwned)".into())], profile: None }).unwrap();
+    let p = plan(
+        &e,
+        &src,
+        &EditRequest {
+            ops: vec![Op::Set("EXIF:Artist".into(), "Zed; $(touch pwned)".into())],
+            profile: None,
+        },
+    )
+    .unwrap();
     assert_eq!(p.backend, "exiftool");
     assert!(p.warnings.iter().any(|w| w.contains("exiftool")));
     let dest = d.path().join("b.jpg");
