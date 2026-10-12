@@ -124,7 +124,10 @@ struct T {
     exact: bool,
 }
 fn t(tv: &TimeValue) -> Option<T> {
-    Some(T { secs: tv.sort_key()?, exact: tv.offset_known })
+    Some(T {
+        secs: tv.sort_key()?,
+        exact: tv.offset_known,
+    })
 }
 fn tol(a_exact: bool, b_exact: bool, th: &Thresholds) -> i64 {
     if a_exact && b_exact {
@@ -167,9 +170,17 @@ struct Draft {
 
 impl Ctx<'_> {
     fn push(&mut self, d: Draft) {
-        let mut keys: Vec<String> = d.evidence.iter().map(|e| format!("{}|{}|{}", e.file, e.field, e.value)).collect();
+        let mut keys: Vec<String> = d
+            .evidence
+            .iter()
+            .map(|e| format!("{}|{}|{}", e.file, e.field, e.value))
+            .collect();
         keys.sort();
-        let id = format!("{}-{}", d.rule, &sha256_bytes(format!("{}\n{}", d.rule, keys.join("\n")).as_bytes())[..8]);
+        let id = format!(
+            "{}-{}",
+            d.rule,
+            &sha256_bytes(format!("{}\n{}", d.rule, keys.join("\n")).as_bytes())[..8]
+        );
         let mut files: Vec<String> = d.evidence.iter().map(|e| e.file.clone()).collect();
         files.sort();
         files.dedup();
@@ -196,7 +207,12 @@ impl Ctx<'_> {
 }
 
 fn ev(e: &Event) -> Evidence {
-    Evidence { file: e.file.clone(), field: e.field.clone(), value: e.value.clone(), source: e.source }
+    Evidence {
+        file: e.file.clone(),
+        field: e.field.clone(),
+        value: e.value.clone(),
+        source: e.source,
+    }
 }
 
 fn cat_of<'a>(reports: &'a [FileReport], root: &Path, file: &str) -> Option<&'a FileReport> {
@@ -210,10 +226,16 @@ const STD_BENIGN_TIME: [&str; 3] = [
 ];
 
 pub fn assess(input: &Input) -> Assessment {
-    let mut c = Ctx { i: input, out: vec![] };
+    let mut c = Ctx {
+        i: input,
+        out: vec![],
+    };
     let root = input.root;
     let events = timeline::file_events(root, input.reports);
-    let embedded: Vec<&Event> = events.iter().filter(|e| e.source == Source::Embedded).collect();
+    let embedded: Vec<&Event> = events
+        .iter()
+        .filter(|e| e.source == Source::Embedded)
+        .collect();
     let claims = input.claims;
     let th = input.thresholds;
     let start = claims.start.as_deref().and_then(|s| parse_claim(s).ok());
