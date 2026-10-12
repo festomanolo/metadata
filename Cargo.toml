@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/metadata-core", "crates/metadata-engine", "crates/metadata-forensics", "crates/metadata-edit", "crates/metadata-tui", "crates/metadata-cli", "crates/metadata-testkit"]
+members = ["crates/metadata-core", "crates/metadata-engine", "crates/metadata-forensics", "crates/metadata-edit", "crates/metadata-tui", "crates/metadata-storage", "crates/metadata-report", "crates/metadata-cli", "crates/metadata-testkit"]
 
 [workspace.package]
 version = "0.1.0"
