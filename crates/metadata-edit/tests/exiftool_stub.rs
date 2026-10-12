@@ -40,8 +40,14 @@ fn stub_engine(dir: &Path) -> (Engine, PathBuf) {
     let exe = dir.join("exiftool");
     std::fs::write(&exe, STUB).unwrap();
     std::fs::set_permissions(&exe, std::fs::Permissions::from_mode(0o755)).unwrap();
-    let mut e = Engine::new(Options { use_external: true, ..Default::default() });
-    e.backends = Backends { exiftool: Some((exe.clone(), "12.99".into())), ffprobe: None };
+    let mut e = Engine::new(Options {
+        use_external: true,
+        ..Default::default()
+    });
+    e.backends = Backends {
+        exiftool: Some((exe.clone(), "12.99".into())),
+        ffprobe: None,
+    };
     (e, exe)
 }
 
