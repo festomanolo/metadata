@@ -324,6 +324,7 @@ pub fn assess(input: &Input) -> Assessment {
         git_commits: input.git.map(|g| g.commits.len()),
         findings,
         integrity: None,
+        personal_data_redacted: false,
         checks_not_implemented: vec![
             "Consistency between source code, documentation, screenshots and project structure (planned; requires content analysis)".into(),
         ],
