@@ -65,6 +65,7 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
   - `native/{mod,image,ooxml,pdf,archive,text,xmp}.rs`: native extractors; `mod.rs` dispatches + `catch_unwind`
 - `crates/metadata-forensics`: `claims.rs` (Claims, Milestone, Thresholds, parse_claim day-ranges), `git.rs` (read_history, hardened git subprocess), `timeline.rs` (Source, Role, Event, build), `project.rs`, `assess.rs` (assess, verify_unchanged, redact, Finding), `manifest.rs` (`create/load/verify`, `Manifest`, `VerifyReport`), `compare.rs` (`compare_reports`, `compare_sets`, `DiffStatus`)
 - `crates/metadata-cli` (binary `metadata`): `args.rs` (clap), `config.rs`, `render.rs` (json_envelope, csv_fields, human_report, redact, Style), `main.rs` (all command handlers `cmd_*`, `scan()`, `emit()`, `write_output()`); tests in `tests/cli.rs` (assert_cmd)
+- `crates/metadata-edit`: `lib.rs` (`plan`, `execute`, `Plan`, `Change`, `EditRequest/Op/Profile`, `ApplyOpts{backup,replace_original,allow_signature_loss,force,log_path}`, `EditOutcome`, verification + unexpected_changes), `exiftool.rs` (build_args/run), `native/{office,pdf,png,jpeg,zipedit,xmlprops}.rs` (`keys`, `resolve_key`, `write`, `has_signature`). Pipeline: temp file in dest dir → re-extract/verify → backup → atomic persist → log.
 - `crates/metadata-testkit` (dev-only): `jpeg(&ExifSpec,..)`, `png`, `docx(&DocxSpec)`, `odt`, `pdf(..,incremental)`, `zip_with`, `tar_gz`. Use these for all new tests.
 - Tests: `crates/metadata-engine/tests/extract.rs` (19 fixture tests incl. malformed, bombs, cancel, symlinks)
 
@@ -76,15 +77,13 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 - New external parsing must be panic-safe, bounded (Limits), and never execute content.
 
 ## Known issues / decisions log
+- quick-xml 0.41 emits entities (`&amp;`) as `Event::GeneralRef`; readers must handle it (fixed in ooxml.rs/xmp.rs via `xmp::entity_char`). Custom-props reader in ooxml.rs still ignores entities (minor TODO).
 - quick-xml `unescape_value` deprecated; silenced with `#![allow(deprecated)]` in native/mod.rs.
 - `Backends::extract_external` with exiftool dedupes against native fields by (group,name,raw); exiftool group names (EXIF, XMP, PDF…) were chosen to align.
 - Search alias table + "format can hold" table live in `search.rs`; extend when adding fields.
 - Archive entry timestamps (ZIP DOS time) have no timezone → naive `TimeValue`.
 
 ## Next steps (in order)
-1. M4: edit/clean (exiftool-backed writes + native-safe pipeline: dry-run, diff, backup, temp+verify+atomic replace, signature warning).
-3. M3: TUI (ratatui+crossterm).
-4. M6: SQLite cases, HTML/CSV/JSON reports. 5. M7: benches, docs (README, CLI ref, format matrix), audit.
-
-- Scans exclude `.git` by default (`--include-vcs`, `--exclude DIR`); assess/timeline also skip node_modules/target/__pycache__/.venv/venv. `hash` uses same scan_opts (so excludes .git too unless --include-vcs).
-- Env note: an external auto-commit/sync process in the user's environment commits to main and a GitHub remote; do not fight it.
+1. M3: TUI (ratatui+crossterm) — `metadata tui` command, new crate `metadata-tui`.
+2. M6: HTML/CSV report for `assess` (metadata-report crate), SQLite cases (metadata-storage).
+3. M7: benches, README/CLI ref/format matrix/safety+methodology docs, audit.
