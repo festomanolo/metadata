@@ -6,8 +6,8 @@ Rule: after adding/changing/removing a feature, file, public API, or dependency,
 - Toolchain: `export PATH=$HOME/.cargo/bin:$PATH` (cargo/rustc 1.99; MSRV set to 1.82). Not on default PATH; PATH does not persist between Bash calls.
 - Backends on dev machine: exiftool NO, ffprobe NO, 7z NO, tika NO → tests use native paths only (`use_external:false`); adapters tested via JSON-parse unit tests.
 - First build is slow (~3 min); run long cargo commands with a 600000 ms timeout.
-- Check: `cargo fmt --all && cargo clippy --workspace --all-targets && cargo test --workspace` (all green; ~80 tests).
-- Last updated: 2026-10-12 — M1–M5 done incl. TUI; cases (SQLite), HTML reports, docs, benches remain.
+- Check: `cargo fmt --all && cargo clippy --workspace --all-targets && cargo test --workspace` (all green; 122 tests).
+- Last updated: 2026-10-12 — All milestones M1–M7 implemented; 122 tests green. Remaining: items under Next steps.
 
 ## Feature status
 Legend: DONE (works + tested) · PARTIAL · PLANNED
