@@ -45,9 +45,11 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 | Output | JSON envelope (schema 1.0.0), CSV (formula-injection guarded), human, redaction | DONE | |
 | Perf | Bounded rayon pool, cancellation (Ctrl+C), progress bar (TTY only) | DONE | benchmarks PLANNED; caching/index PLANNED |
 | Security | No shell, timeout+output cap for subprocesses, panic isolation per parser, symlinks not followed | DONE | |
-| Reports | HTML/CSV/JSON assessment reports | PLANNED | |
-| Storage | SQLite cases/cache | PLANNED | |
-| Docs | README, CLI ref, format matrix, safety/methodology guides | PLANNED | PLAN/ARCHITECTURE/ROADMAP exist (short) |
+| Reports | HTML (escaped, self-contained, printable)/CSV/JSON assessment reports | DONE | `metadata-report`; `assess --html`, `case report --html/--csv -f json` |
+| Storage | SQLite cases (schema v1: cases, submissions, finding states, notes) + content-hash cache | DONE | `metadata-storage`; `case new/list/show/add/finding/note/report/diff`; `--cache` on scans (cache.sqlite in config dir) |
+| Docs | README, docs/{CLI,FORMATS,EDITING-SAFETY,ASSESSMENT}.md, ARCHITECTURE, ROADMAP, CHANGELOG, LICENSE | DONE | docs/CLI.md is generated from `--help` (regenerate when commands change) |
+| Perf | Benchmark `cargo bench -p metadata-engine --bench scan` | DONE | measured 3.3–5.4× at 8 jobs on 2000 files (README table) |
+| Security | cargo-audit | NOT RUN | install attempt hung on registry lock and was killed; run `cargo install cargo-audit && cargo audit` later |
 
 ## Crate / file map
 - `Cargo.toml` workspace (members: core, engine, forensics, cli, testkit). `.gitignore`, `CLAUDE.md` (points here).
