@@ -124,7 +124,10 @@ struct T {
     exact: bool,
 }
 fn t(tv: &TimeValue) -> Option<T> {
-    Some(T { secs: tv.sort_key()?, exact: tv.offset_known })
+    Some(T {
+        secs: tv.sort_key()?,
+        exact: tv.offset_known,
+    })
 }
 fn tol(a_exact: bool, b_exact: bool, th: &Thresholds) -> i64 {
     if a_exact && b_exact {
@@ -167,9 +170,17 @@ struct Draft {
 
 impl Ctx<'_> {
     fn push(&mut self, d: Draft) {
-        let mut keys: Vec<String> = d.evidence.iter().map(|e| format!("{}|{}|{}", e.file, e.field, e.value)).collect();
+        let mut keys: Vec<String> = d
+            .evidence
+            .iter()
+            .map(|e| format!("{}|{}|{}", e.file, e.field, e.value))
+            .collect();
         keys.sort();
-        let id = format!("{}-{}", d.rule, &sha256_bytes(format!("{}\n{}", d.rule, keys.join("\n")).as_bytes())[..8]);
+        let id = format!(
+            "{}-{}",
+            d.rule,
+            &sha256_bytes(format!("{}\n{}", d.rule, keys.join("\n")).as_bytes())[..8]
+        );
         let mut files: Vec<String> = d.evidence.iter().map(|e| e.file.clone()).collect();
         files.sort();
         files.dedup();
@@ -196,7 +207,12 @@ impl Ctx<'_> {
 }
 
 fn ev(e: &Event) -> Evidence {
-    Evidence { file: e.file.clone(), field: e.field.clone(), value: e.value.clone(), source: e.source }
+    Evidence {
+        file: e.file.clone(),
+        field: e.field.clone(),
+        value: e.value.clone(),
+        source: e.source,
+    }
 }
 
 fn cat_of<'a>(reports: &'a [FileReport], root: &Path, file: &str) -> Option<&'a FileReport> {
@@ -210,15 +226,24 @@ const STD_BENIGN_TIME: [&str; 3] = [
 ];
 
 pub fn assess(input: &Input) -> Assessment {
-    let mut c = Ctx { i: input, out: vec![] };
+    let mut c = Ctx {
+        i: input,
+        out: vec![],
+    };
     let root = input.root;
     let events = timeline::file_events(root, input.reports);
-    let embedded: Vec<&Event> = events.iter().filter(|e| e.source == Source::Embedded).collect();
+    let embedded: Vec<&Event> = events
+        .iter()
+        .filter(|e| e.source == Source::Embedded)
+        .collect();
     let claims = input.claims;
     let th = input.thresholds;
     let start = claims.start.as_deref().and_then(|s| parse_claim(s).ok());
     let deadline = claims.deadline.as_deref().and_then(|s| parse_claim(s).ok());
-    let completion = claims.completion.as_deref().and_then(|s| parse_claim(s).ok());
+    let completion = claims
+        .completion
+        .as_deref()
+        .and_then(|s| parse_claim(s).ok());
     let now = t(&input.now);
 
     rule_future(&mut c, &embedded, &now);
@@ -250,7 +275,12 @@ pub fn assess(input: &Input) -> Assessment {
     }
 
     let mut findings = c.out;
-    findings.sort_by(|a, b| b.severity.cmp(&a.severity).then(b.review_priority.cmp(&a.review_priority)).then(a.id.cmp(&b.id)));
+    findings.sort_by(|a, b| {
+        b.severity
+            .cmp(&a.severity)
+            .then(b.review_priority.cmp(&a.review_priority))
+            .then(a.id.cmp(&b.id))
+    });
     findings.dedup_by(|a, b| a.id == b.id);
 
     let inventory = input
@@ -265,8 +295,16 @@ pub fn assess(input: &Input) -> Assessment {
             fs_created: r.filesystem.created.clone(),
             fs_modified: r.filesystem.modified.clone(),
             fields: r.fields.len(),
-            warnings: r.warnings.iter().map(|w| format!("[{}] {}", w.backend, w.message)).collect(),
-            backends: r.backends.iter().map(|b| format!("{} {}", b.name, b.version)).collect(),
+            warnings: r
+                .warnings
+                .iter()
+                .map(|w| format!("[{}] {}", w.backend, w.message))
+                .collect(),
+            backends: r
+                .backends
+                .iter()
+                .map(|b| format!("{} {}", b.name, b.version))
+                .collect(),
             error: r.error.clone(),
         })
         .collect();
@@ -359,7 +397,8 @@ fn rule_before_start(c: &mut Ctx, emb: &[&Event], s: &DayRange) {
     for e in emb.iter().filter(|e| e.role == Role::Created) {
         let Some(x) = t(&e.time) else { continue };
         if x.secs + tol(x.exact, claim_exact(s), c.i.thresholds) < s.start {
-            let image = cat_of(c.i.reports, c.i.root, &e.file).is_some_and(|r| r.format.category == Category::Image);
+            let image = cat_of(c.i.reports, c.i.root, &e.file)
+                .is_some_and(|r| r.format.category == Category::Image);
             c.push(Draft {
                 rule: "TS-BEFORE-START",
                 title: "Creation timestamp is earlier than the claimed project start".into(),
@@ -380,15 +419,24 @@ fn rule_before_start(c: &mut Ctx, emb: &[&Event], s: &DayRange) {
 fn rule_after(c: &mut Ctx, emb: &[&Event], d: &DayRange, label: &str, now: &Option<T>) {
     for e in emb {
         let Some(x) = t(&e.time) else { continue };
-        if now.as_ref().is_some_and(|n| x.secs > n.secs + tol(x.exact, true, c.i.thresholds)) {
+        if now
+            .as_ref()
+            .is_some_and(|n| x.secs > n.secs + tol(x.exact, true, c.i.thresholds))
+        {
             continue; // reported as TS-FUTURE
         }
         if x.secs - tol(x.exact, claim_exact(d), c.i.thresholds) > d.end {
             let media = e.field.contains("creation_time") || e.field.contains("Tags");
             let (rule, title) = if media {
-                ("TS-MEDIA-AFTER", format!("Media container timestamp is later than the {label}"))
+                (
+                    "TS-MEDIA-AFTER",
+                    format!("Media container timestamp is later than the {label}"),
+                )
             } else {
-                ("TS-AFTER", format!("Embedded timestamp is later than the {label}"))
+                (
+                    "TS-AFTER",
+                    format!("Embedded timestamp is later than the {label}"),
+                )
             };
             c.push(Draft {
                 rule,
@@ -407,8 +455,10 @@ fn rule_after(c: &mut Ctx, emb: &[&Event], d: &DayRange, label: &str, now: &Opti
     }
 }
 
+type EventPair<'a> = (Vec<&'a Event>, Vec<&'a Event>);
+
 fn rule_modified_before_created(c: &mut Ctx, emb: &[&Event]) {
-    let mut by: BTreeMap<(&str, &str), (Vec<&Event>, Vec<&Event>)> = BTreeMap::new();
+    let mut by: BTreeMap<(&str, &str), EventPair> = BTreeMap::new();
     for e in emb {
         let group = e.field.split(':').next().unwrap_or("");
         let slot = by.entry((e.file.as_str(), group)).or_default();
@@ -419,8 +469,15 @@ fn rule_modified_before_created(c: &mut Ctx, emb: &[&Event]) {
         }
     }
     for ((_, _), (cr, md)) in by {
-        let (Some(created), Some(modified)) = (cr.iter().min_by_key(|e| e.time.sort_key()), md.iter().max_by_key(|e| e.time.sort_key())) else { continue };
-        let (Some(a), Some(b)) = (t(&created.time), t(&modified.time)) else { continue };
+        let (Some(created), Some(modified)) = (
+            cr.iter().min_by_key(|e| e.time.sort_key()),
+            md.iter().max_by_key(|e| e.time.sort_key()),
+        ) else {
+            continue;
+        };
+        let (Some(a), Some(b)) = (t(&created.time), t(&modified.time)) else {
+            continue;
+        };
         if b.secs + tol(a.exact, b.exact, c.i.thresholds) < a.secs {
             c.push(Draft {
                 rule: "TS-MOD-BEFORE-CREATE",
@@ -465,13 +522,34 @@ fn rule_milestone(c: &mut Ctx, emb: &[&Event], name: &str, m: &DayRange, filt: O
 
 fn rule_uniform(c: &mut Ctx, events: &[Event]) {
     let min = c.i.thresholds.uniform_min_files;
-    let hash_of = |file: &str| cat_of(c.i.reports, c.i.root, file).and_then(|r| r.sha256.clone()).unwrap_or_default();
+    let hash_of = |file: &str| {
+        cat_of(c.i.reports, c.i.root, file)
+            .and_then(|r| r.sha256.clone())
+            .unwrap_or_default()
+    };
     for (source, rule, role, title, sev, prio) in [
-        (Source::Filesystem, "UNI-FS", Role::Modified, "Many different files share one filesystem modification time", Severity::Info, 1),
-        (Source::Embedded, "UNI-EMBEDDED", Role::Created, "Many different files share one embedded creation time", Severity::Review, 2),
+        (
+            Source::Filesystem,
+            "UNI-FS",
+            Role::Modified,
+            "Many different files share one filesystem modification time",
+            Severity::Info,
+            1,
+        ),
+        (
+            Source::Embedded,
+            "UNI-EMBEDDED",
+            Role::Created,
+            "Many different files share one embedded creation time",
+            Severity::Review,
+            2,
+        ),
     ] {
         let mut groups: BTreeMap<&str, Vec<&Event>> = BTreeMap::new();
-        for e in events.iter().filter(|e| e.source == source && e.role == role) {
+        for e in events
+            .iter()
+            .filter(|e| e.source == source && e.role == role)
+        {
             groups.entry(e.time.iso.as_str()).or_default().push(e);
         }
         for (iso, evs) in groups {
@@ -501,7 +579,11 @@ fn rule_uniform(c: &mut Ctx, events: &[Event]) {
 }
 
 fn rule_ext_mismatch(c: &mut Ctx) {
-    for r in c.i.reports.iter().filter(|r| r.format.extension_match == ExtensionMatch::Mismatch) {
+    for r in
+        c.i.reports
+            .iter()
+            .filter(|r| r.format.extension_match == ExtensionMatch::Mismatch)
+    {
         let file = rel(c.i.root, &r.path);
         c.push(Draft {
             rule: "FMT-EXT-MISMATCH",
@@ -520,7 +602,8 @@ fn rule_ext_mismatch(c: &mut Ctx) {
 }
 
 fn skip_dup(p: &str) -> bool {
-    p.split('/').any(|c| matches!(c, ".git" | "node_modules" | "target" | "__pycache__"))
+    p.split('/')
+        .any(|c| matches!(c, ".git" | "node_modules" | "target" | "__pycache__"))
 }
 
 fn rule_duplicates(c: &mut Ctx) {
@@ -540,7 +623,15 @@ fn rule_duplicates(c: &mut Ctx) {
             title: format!("{} files have identical content", files.len()),
             severity: Severity::Info,
             priority: 1,
-            evidence: files.iter().map(|f| Evidence { file: f.clone(), field: "sha256".into(), value: h.into(), source: Source::Embedded }).collect(),
+            evidence: files
+                .iter()
+                .map(|f| Evidence {
+                    file: f.clone(),
+                    field: "sha256".into(),
+                    value: h.into(),
+                    source: Source::Embedded,
+                })
+                .collect(),
             comparison_rule: "equal SHA-256".into(),
             explanation: "These paths contain byte-identical content.".into(),
             benign: vec!["Intentional copies, backups, shared assets or build outputs."],
@@ -559,13 +650,25 @@ fn rule_missing_metadata(c: &mut Ctx) {
         let rp = rel(c.i.root, &r.path);
         let has = |names: &[&str]| names.iter().any(|n| !r.find(n).is_empty());
         match r.format.id.as_str() {
-            "docx" | "xlsx" | "pptx" | "odt" | "ods" | "odp" if !has(&["Created", "CreationDate"]) => docs.push(rp),
+            "docx" | "xlsx" | "pptx" | "odt" | "ods" | "odp"
+                if !has(&["Created", "CreationDate"]) =>
+            {
+                docs.push(rp)
+            }
             "pdf" if !has(&["CreationDate"]) => pdfs.push(rp),
-            "jpeg" | "tiff" | "heic" if !has(&["DateTimeOriginal", "DateTime", "DateTimeDigitized"]) => photos.push(rp),
+            "jpeg" | "tiff" | "heic"
+                if !has(&["DateTimeOriginal", "DateTime", "DateTimeDigitized"]) =>
+            {
+                photos.push(rp)
+            }
             _ => {}
         }
     }
-    for (label, files, field) in [("office/ODF documents", docs, "creation date"), ("PDF files", pdfs, "CreationDate"), ("photos", photos, "capture/modify date")] {
+    for (label, files, field) in [
+        ("office/ODF documents", docs, "creation date"),
+        ("PDF files", pdfs, "CreationDate"),
+        ("photos", photos, "capture/modify date"),
+    ] {
         if files.is_empty() {
             continue;
         }
@@ -585,26 +688,63 @@ fn rule_missing_metadata(c: &mut Ctx) {
     }
 }
 
-fn rule_incremental(c: &mut Ctx, start: &Option<DayRange>, deadline: &Option<DayRange>, completion: &Option<DayRange>) {
+fn rule_incremental(
+    c: &mut Ctx,
+    start: &Option<DayRange>,
+    deadline: &Option<DayRange>,
+    completion: &Option<DayRange>,
+) {
     let mut ev_list = vec![];
     for r in c.i.reports {
         let f = rel(c.i.root, &r.path);
-        let num = |n: &str| r.find(n).first().and_then(|x| x.raw.parse::<u64>().ok()).unwrap_or(0);
-        let (rev, tracked) = (num("Revision"), num("TrackedInsertions") + num("TrackedDeletions"));
-        let pdf_rev = if r.format.id == "pdf" { num("Revisions") } else { 0 };
+        let num = |n: &str| {
+            r.find(n)
+                .first()
+                .and_then(|x| x.raw.parse::<u64>().ok())
+                .unwrap_or(0)
+        };
+        let (rev, tracked) = (
+            num("Revision"),
+            num("TrackedInsertions") + num("TrackedDeletions"),
+        );
+        let pdf_rev = if r.format.id == "pdf" {
+            num("Revisions")
+        } else {
+            0
+        };
         if rev > 1 {
-            ev_list.push(Evidence { file: f.clone(), field: "OOXML-Core:Revision".into(), value: rev.to_string(), source: Source::Embedded });
+            ev_list.push(Evidence {
+                file: f.clone(),
+                field: "OOXML-Core:Revision".into(),
+                value: rev.to_string(),
+                source: Source::Embedded,
+            });
         }
         if tracked > 0 {
-            ev_list.push(Evidence { file: f.clone(), field: "Document:TrackedChanges".into(), value: tracked.to_string(), source: Source::Embedded });
+            ev_list.push(Evidence {
+                file: f.clone(),
+                field: "Document:TrackedChanges".into(),
+                value: tracked.to_string(),
+                source: Source::Embedded,
+            });
         }
         if pdf_rev > 1 {
-            ev_list.push(Evidence { file: f, field: "PDF:Revisions".into(), value: pdf_rev.to_string(), source: Source::Embedded });
+            ev_list.push(Evidence {
+                file: f,
+                field: "PDF:Revisions".into(),
+                value: pdf_rev.to_string(),
+                source: Source::Embedded,
+            });
         }
     }
     let git_n = c.i.git.map(|g| g.commits.len()).unwrap_or(0);
     if git_n > 1 {
-        ev_list.push(Evidence { file: "(git)".into(), field: "commits".into(), value: git_n.to_string(), source: Source::Git });
+        ev_list.push(Evidence {
+            file: "(git)".into(),
+            field: "commits".into(),
+            value: git_n.to_string(),
+            source: Source::Git,
+        });
     }
     if !ev_list.is_empty() {
         c.push(Draft {
@@ -639,15 +779,34 @@ fn rule_incremental(c: &mut Ctx, start: &Option<DayRange>, deadline: &Option<Day
     }
 }
 
-fn rule_git(c: &mut Ctx, g: &GitHistory, start: &Option<DayRange>, deadline: &Option<DayRange>, now: &Option<T>) {
+fn rule_git(
+    c: &mut Ctx,
+    g: &GitHistory,
+    start: &Option<DayRange>,
+    deadline: &Option<DayRange>,
+    now: &Option<T>,
+) {
     if g.commits.is_empty() {
         return;
     }
     let th = c.i.thresholds;
     let secs = |tv: &TimeValue| tv.sort_key().unwrap_or(0);
-    let first = g.commits.iter().min_by_key(|c| secs(&c.author_date)).unwrap();
-    let last = g.commits.iter().max_by_key(|c| secs(&c.author_date)).unwrap();
-    let gev = |cm: &crate::git::Commit, f: &str| Evidence { file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]), field: f.into(), value: cm.author_date.iso.clone(), source: Source::Git };
+    let first = g
+        .commits
+        .iter()
+        .min_by_key(|c| secs(&c.author_date))
+        .unwrap();
+    let last = g
+        .commits
+        .iter()
+        .max_by_key(|c| secs(&c.author_date))
+        .unwrap();
+    let gev = |cm: &crate::git::Commit, f: &str| Evidence {
+        file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]),
+        field: f.into(),
+        value: cm.author_date.iso.clone(),
+        source: Source::Git,
+    };
     if let Some(s) = start {
         let x = secs(&first.author_date);
         if x + tol(true, claim_exact(s), th) < s.start {
@@ -658,8 +817,13 @@ fn rule_git(c: &mut Ctx, g: &GitHistory, start: &Option<DayRange>, deadline: &Op
                 priority: 3,
                 evidence: vec![gev(first, "first commit author date")],
                 comparison_rule: "first commit - tolerance < claimed start".into(),
-                explanation: "The repository contains commits older than the claimed start date.".into(),
-                benign: vec!["Repository initialised from a template or earlier project.", "Cloned or forked starter code.", "The claimed start date may be approximate."],
+                explanation: "The repository contains commits older than the claimed start date."
+                    .into(),
+                benign: vec![
+                    "Repository initialised from a template or earlier project.",
+                    "Cloned or forked starter code.",
+                    "The claimed start date may be approximate.",
+                ],
                 obs: Confidence::High,
                 interp: Confidence::Low,
                 follow_up: "Ask which commits predate the project and where they came from.",
@@ -681,7 +845,11 @@ fn rule_git(c: &mut Ctx, g: &GitHistory, start: &Option<DayRange>, deadline: &Op
         }
     }
     if let Some(d) = deadline {
-        let late: Vec<_> = g.commits.iter().filter(|cm| secs(&cm.author_date) - tol(true, claim_exact(d), th) > d.end).collect();
+        let late: Vec<_> = g
+            .commits
+            .iter()
+            .filter(|cm| secs(&cm.author_date) - tol(true, claim_exact(d), th) > d.end)
+            .collect();
         if !late.is_empty() {
             c.push(Draft {
                 rule: "GIT-AFTER-DEADLINE",
@@ -699,7 +867,14 @@ fn rule_git(c: &mut Ctx, g: &GitHistory, start: &Option<DayRange>, deadline: &Op
         }
     }
     if let Some(n) = now {
-        let fut: Vec<_> = g.commits.iter().filter(|cm| secs(&cm.author_date) > n.secs + th.tolerance_hours * 3600 || secs(&cm.commit_date) > n.secs + th.tolerance_hours * 3600).collect();
+        let fut: Vec<_> = g
+            .commits
+            .iter()
+            .filter(|cm| {
+                secs(&cm.author_date) > n.secs + th.tolerance_hours * 3600
+                    || secs(&cm.commit_date) > n.secs + th.tolerance_hours * 3600
+            })
+            .collect();
         if !fut.is_empty() {
             c.push(Draft {
                 rule: "GIT-FUTURE",
@@ -717,7 +892,8 @@ fn rule_git(c: &mut Ctx, g: &GitHistory, start: &Option<DayRange>, deadline: &Op
         }
     }
     // child dated before its parent
-    let by_hash: std::collections::HashMap<&str, &crate::git::Commit> = g.commits.iter().map(|cm| (cm.hash.as_str(), cm)).collect();
+    let by_hash: std::collections::HashMap<&str, &crate::git::Commit> =
+        g.commits.iter().map(|cm| (cm.hash.as_str(), cm)).collect();
     let mut back = vec![];
     for cm in &g.commits {
         for p in &cm.parents {
@@ -731,26 +907,55 @@ fn rule_git(c: &mut Ctx, g: &GitHistory, start: &Option<DayRange>, deadline: &Op
     if !back.is_empty() {
         c.push(Draft {
             rule: "GIT-NONMONOTONIC",
-            title: format!("{} commit(s) are dated earlier than their parent", back.len()),
+            title: format!(
+                "{} commit(s) are dated earlier than their parent",
+                back.len()
+            ),
             severity: Severity::Review,
             priority: 3,
-            evidence: back.iter().map(|(cm, pc)| Evidence { file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]), field: "commit date vs parent".into(), value: format!("{} < parent {}", cm.commit_date.iso, pc.commit_date.iso), source: Source::Git }).collect(),
+            evidence: back
+                .iter()
+                .map(|(cm, pc)| Evidence {
+                    file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]),
+                    field: "commit date vs parent".into(),
+                    value: format!("{} < parent {}", cm.commit_date.iso, pc.commit_date.iso),
+                    source: Source::Git,
+                })
+                .collect(),
             comparison_rule: "child committer date + 2 min < parent committer date".into(),
             explanation: "History order and recorded dates disagree.".into(),
-            benign: vec!["Clock changes or skew between machines.", "Rebases, cherry-picks or merges of work done elsewhere."],
+            benign: vec![
+                "Clock changes or skew between machines.",
+                "Rebases, cherry-picks or merges of work done elsewhere.",
+            ],
             obs: Confidence::High,
             interp: Confidence::Low,
             follow_up: "Inspect these commits' author/committer dates and the branch structure.",
         });
     }
-    let skewed: Vec<_> = g.commits.iter().filter(|cm| (secs(&cm.author_date) - secs(&cm.commit_date)).abs() > 86_400).collect();
+    let skewed: Vec<_> = g
+        .commits
+        .iter()
+        .filter(|cm| (secs(&cm.author_date) - secs(&cm.commit_date)).abs() > 86_400)
+        .collect();
     if !skewed.is_empty() {
         c.push(Draft {
             rule: "GIT-AUTHOR-COMMIT-SKEW",
-            title: format!("{} commit(s) have author and committer dates more than a day apart", skewed.len()),
+            title: format!(
+                "{} commit(s) have author and committer dates more than a day apart",
+                skewed.len()
+            ),
             severity: Severity::Info,
             priority: 1,
-            evidence: skewed.iter().map(|cm| Evidence { file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]), field: "author vs commit date".into(), value: format!("{} / {}", cm.author_date.iso, cm.commit_date.iso), source: Source::Git }).collect(),
+            evidence: skewed
+                .iter()
+                .map(|cm| Evidence {
+                    file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]),
+                    field: "author vs commit date".into(),
+                    value: format!("{} / {}", cm.author_date.iso, cm.commit_date.iso),
+                    source: Source::Git,
+                })
+                .collect(),
             comparison_rule: "|author date - committer date| > 24h".into(),
             explanation: "Typical of rebased, amended or cherry-picked commits.".into(),
             benign: vec!["Ordinary rebase or amend workflows."],
@@ -763,9 +968,20 @@ fn rule_git(c: &mut Ctx, g: &GitHistory, start: &Option<DayRange>, deadline: &Op
 }
 
 fn rule_gaps(c: &mut Ctx, emb: &[&Event], start: &Option<DayRange>, end: &Option<DayRange>) {
-    let mut times: Vec<(i64, String)> = emb.iter().filter_map(|e| e.time.sort_key().map(|k| (k, format!("{} {}", e.file, e.field)))).collect();
+    let mut times: Vec<(i64, String)> = emb
+        .iter()
+        .filter_map(|e| {
+            e.time
+                .sort_key()
+                .map(|k| (k, format!("{} {}", e.file, e.field)))
+        })
+        .collect();
     if let Some(g) = c.i.git {
-        times.extend(g.commits.iter().filter_map(|cm| cm.author_date.sort_key().map(|k| (k, format!("git:{}", &cm.hash[..10.min(cm.hash.len())])))));
+        times.extend(g.commits.iter().filter_map(|cm| {
+            cm.author_date
+                .sort_key()
+                .map(|k| (k, format!("git:{}", &cm.hash[..10.min(cm.hash.len())])))
+        }));
     }
     if let Some(s) = start {
         times.retain(|(k, _)| *k >= s.start);
@@ -782,18 +998,36 @@ fn rule_gaps(c: &mut Ctx, emb: &[&Event], start: &Option<DayRange>, end: &Option
     let evs: Vec<Evidence> = times
         .windows(2)
         .filter(|w| w[1].0 - w[0].0 > gap)
-        .map(|w| Evidence { file: "(timeline)".into(), field: "gap".into(), value: format!("{} days between {} and {}", (w[1].0 - w[0].0) / 86_400, w[0].1, w[1].1), source: Source::Embedded })
+        .map(|w| Evidence {
+            file: "(timeline)".into(),
+            field: "gap".into(),
+            value: format!(
+                "{} days between {} and {}",
+                (w[1].0 - w[0].0) / 86_400,
+                w[0].1,
+                w[1].1
+            ),
+            source: Source::Embedded,
+        })
         .collect();
     if !evs.is_empty() {
         c.push(Draft {
             rule: "GAP-HISTORY",
-            title: format!("{} gap(s) of more than {} days in the available history", evs.len(), c.i.thresholds.gap_days),
+            title: format!(
+                "{} gap(s) of more than {} days in the available history",
+                evs.len(),
+                c.i.thresholds.gap_days
+            ),
             severity: Severity::Info,
             priority: 1,
             evidence: evs,
-            comparison_rule: "consecutive embedded/git timestamps further apart than the gap threshold".into(),
+            comparison_rule:
+                "consecutive embedded/git timestamps further apart than the gap threshold".into(),
             explanation: "No dated artefacts exist for these periods in what was submitted.".into(),
-            benign: vec!["Work in tools that leave no dated artefacts.", "Breaks in the project, holidays or exams."],
+            benign: vec![
+                "Work in tools that leave no dated artefacts.",
+                "Breaks in the project, holidays or exams.",
+            ],
             obs: Confidence::Medium,
             interp: Confidence::Low,
             follow_up: "Ask what happened during the gap if the milestone plan expected activity.",
@@ -807,7 +1041,8 @@ fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
     }
     let old: BTreeMap<String, &FileReport> = prev.iter().map(|r| key(proot, r)).collect();
     let new: BTreeMap<String, &FileReport> = c.i.reports.iter().map(|r| key(c.i.root, r)).collect();
-    let old_hashes: std::collections::HashSet<&str> = prev.iter().filter_map(|r| r.sha256.as_deref()).collect();
+    let old_hashes: std::collections::HashSet<&str> =
+        prev.iter().filter_map(|r| r.sha256.as_deref()).collect();
     let (mut added, mut removed, mut changed, mut same) = (vec![], vec![], vec![], 0usize);
     for (p, n) in &new {
         match old.get(p) {
@@ -822,14 +1057,29 @@ fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
         }
     }
     let mut evid = vec![];
-    for (label, list) in [("added", &added), ("removed", &removed), ("changed", &changed)] {
+    for (label, list) in [
+        ("added", &added),
+        ("removed", &removed),
+        ("changed", &changed),
+    ] {
         for p in list {
-            evid.push(Evidence { file: p.clone(), field: "vs previous submission".into(), value: label.into(), source: Source::Embedded });
+            evid.push(Evidence {
+                file: p.clone(),
+                field: "vs previous submission".into(),
+                value: label.into(),
+                source: Source::Embedded,
+            });
         }
     }
     c.push(Draft {
         rule: "SUB-DIFF",
-        title: format!("Compared with previous submission: {} added, {} removed, {} changed, {} identical", added.len(), removed.len(), changed.len(), same),
+        title: format!(
+            "Compared with previous submission: {} added, {} removed, {} changed, {} identical",
+            added.len(),
+            removed.len(),
+            changed.len(),
+            same
+        ),
         severity: Severity::Info,
         priority: 1,
         evidence: evid,
@@ -843,13 +1093,23 @@ fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
     // repeated assets: identical content at a different path
     let moved: Vec<Evidence> = new
         .iter()
-        .filter(|(p, n)| !old.contains_key(*p) && n.sha256.as_deref().is_some_and(|h| old_hashes.contains(h)))
-        .map(|(p, _)| Evidence { file: p.clone(), field: "sha256".into(), value: "identical content existed at another path previously".into(), source: Source::Embedded })
+        .filter(|(p, n)| {
+            !old.contains_key(*p) && n.sha256.as_deref().is_some_and(|h| old_hashes.contains(h))
+        })
+        .map(|(p, _)| Evidence {
+            file: p.clone(),
+            field: "sha256".into(),
+            value: "identical content existed at another path previously".into(),
+            source: Source::Embedded,
+        })
         .collect();
     if !moved.is_empty() {
         c.push(Draft {
             rule: "DUP-PREVIOUS",
-            title: format!("{} file(s) repeat content from the previous submission under new paths", moved.len()),
+            title: format!(
+                "{} file(s) repeat content from the previous submission under new paths",
+                moved.len()
+            ),
             severity: Severity::Info,
             priority: 1,
             evidence: moved,
@@ -867,7 +1127,17 @@ fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
         if o.sha256 == n.sha256 {
             continue;
         }
-        let first = |r: &FileReport, role: Role| r.fields.iter().filter(|f| f.provenance == metadata_core::Provenance::Stored && f.time.is_some() && timeline::role_of(&f.name) == role).map(|f| (f.key(), f.time.clone().unwrap())).collect::<Vec<_>>();
+        let first = |r: &FileReport, role: Role| {
+            r.fields
+                .iter()
+                .filter(|f| {
+                    f.provenance == metadata_core::Provenance::Stored
+                        && f.time.is_some()
+                        && timeline::role_of(&f.name) == role
+                })
+                .map(|f| (f.key(), f.time.clone().unwrap()))
+                .collect::<Vec<_>>()
+        };
         let (oc, nc) = (first(o, Role::Created), first(n, Role::Created));
         for (k, nt) in &nc {
             if let Some((_, ot)) = oc.iter().find(|(ok, _)| ok == k) {

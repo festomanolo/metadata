@@ -23,8 +23,8 @@ const EXIT_PARTIAL: i32 = 3;
 
 pub(crate) struct Ctx {
     pub(crate) cfg: config::Config,
-    style: Style,
-    cancel: Arc<AtomicBool>,
+    pub(crate) style: Style,
+    pub(crate) cancel: Arc<AtomicBool>,
 }
 
 fn main() {
@@ -102,10 +102,46 @@ fn run(cli: Cli) -> Result<i32> {
             check_extra,
             format,
         } => cmd_verify(&ctx, &manifest, root, check_extra, format),
-        Cmd::Timeline { paths, source, no_git, manifest, claims, c } => forensic::cmd_timeline(&ctx, &paths, &source, no_git, manifest, claims, &c),
-        Cmd::Assess { path, case, student, start, completion, deadline, milestone, claims, previous, no_git, include_personal, min_severity, c } => {
-            forensic::cmd_assess(&ctx, forensic::AssessArgs { path, case, student, start, completion, deadline, milestone, claims, previous, no_git, include_personal, min_severity }, &c)
-        }
+        Cmd::Timeline {
+            paths,
+            source,
+            no_git,
+            manifest,
+            claims,
+            c,
+        } => forensic::cmd_timeline(&ctx, &paths, &source, no_git, manifest, claims, &c),
+        Cmd::Assess {
+            path,
+            case,
+            student,
+            start,
+            completion,
+            deadline,
+            milestone,
+            claims,
+            previous,
+            no_git,
+            include_personal,
+            min_severity,
+            c,
+        } => forensic::cmd_assess(
+            &ctx,
+            forensic::AssessArgs {
+                path,
+                case,
+                student,
+                start,
+                completion,
+                deadline,
+                milestone,
+                claims,
+                previous,
+                no_git,
+                include_personal,
+                min_severity,
+            },
+            &c,
+        ),
         Cmd::Capabilities { format } => cmd_caps(&ctx, format),
         Cmd::Doctor { format } => cmd_doctor(&ctx, format),
         Cmd::Config { path, init } => cmd_config(&ctx, path, init),
@@ -154,8 +190,12 @@ pub(crate) fn engine_for(ctx: &Ctx, c: &Common) -> Engine {
 pub(crate) fn scan_opts(ctx: &Ctx, c: &Common) -> ScanOptions {
     let mut s = ScanOptions {
         recursive: c.recursive,
+        exclude_dirs: c.exclude.clone(),
         ..Default::default()
     };
+    if !c.include_vcs {
+        s.exclude_dirs.push(".git".into());
+    }
     if let Some(j) = c.jobs.or(ctx.cfg.jobs) {
         s.jobs = j.max(1);
     }
