@@ -231,14 +231,27 @@ impl Store {
     }
 
     pub fn latest_submission(&self, case: &str) -> Result<Option<i64>> {
-        db(self.conn.query_row("SELECT MAX(id) FROM submissions WHERE case_id = ?1", [case], |r| r.get::<_, Option<i64>>(0)))
+        db(self.conn.query_row(
+            "SELECT MAX(id) FROM submissions WHERE case_id = ?1",
+            [case],
+            |r| r.get::<_, Option<i64>>(0),
+        ))
     }
 
     // ---------- reviewer decisions ----------
 
-    pub fn set_finding_state(&self, case: &str, finding: &str, status: FindingStatus, note: Option<&str>, reason: Option<&str>) -> Result<()> {
+    pub fn set_finding_state(
+        &self,
+        case: &str,
+        finding: &str,
+        status: FindingStatus,
+        note: Option<&str>,
+        reason: Option<&str>,
+    ) -> Result<()> {
         if status == FindingStatus::Dismissed && reason.map(str::trim).unwrap_or("").is_empty() {
-            return Err(MetaError::InvalidArgument("dismissing a finding requires a reason".into()));
+            return Err(MetaError::InvalidArgument(
+                "dismissing a finding requires a reason".into(),
+            ));
         }
         if self.get_case(case)?.is_none() {
             return Err(MetaError::InvalidArgument(format!("no such case '{case}'")));
@@ -253,7 +266,15 @@ impl Store {
 
     pub fn finding_states(&self, case: &str) -> Result<BTreeMap<String, FindingState>> {
         let mut st = db(self.conn.prepare("SELECT finding_id, status, note, reason, updated_at FROM finding_states WHERE case_id = ?1"))?;
-        let rows = db(st.query_map([case], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<String>>(2)?, r.get::<_, Option<String>>(3)?, r.get::<_, String>(4)?))))?;
+        let rows = db(st.query_map([case], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, Option<String>>(2)?,
+                r.get::<_, Option<String>>(3)?,
+                r.get::<_, String>(4)?,
+            ))
+        }))?;
         let mut m = BTreeMap::new();
         for r in rows {
             let (id, status, note, reason, updated_at) = db(r)?;
