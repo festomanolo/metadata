@@ -22,12 +22,20 @@ pub struct Theme {
 }
 
 pub fn truecolor() -> bool {
-    std::env::var("COLORTERM").map(|v| v == "truecolor" || v == "24bit").unwrap_or(false)
+    std::env::var("COLORTERM")
+        .map(|v| v == "truecolor" || v == "24bit")
+        .unwrap_or(false)
 }
 
 impl Theme {
     pub fn new(kind: ThemeKind, truecolor: bool) -> Theme {
-        let c = |rgb: (u8, u8, u8), fallback: Color| if truecolor { Color::Rgb(rgb.0, rgb.1, rgb.2) } else { fallback };
+        let c = |rgb: (u8, u8, u8), fallback: Color| {
+            if truecolor {
+                Color::Rgb(rgb.0, rgb.1, rgb.2)
+            } else {
+                fallback
+            }
+        };
         match kind {
             ThemeKind::Dark => Theme {
                 kind,
@@ -51,7 +59,17 @@ impl Theme {
                 sel_bg: c((214, 228, 240), Color::Gray),
                 sel_fg: Color::Black,
             },
-            ThemeKind::Mono => Theme { kind, accent: Color::Reset, dim: Color::Reset, warn: Color::Reset, err: Color::Reset, ok: Color::Reset, border: Color::Reset, sel_bg: Color::Reset, sel_fg: Color::Reset },
+            ThemeKind::Mono => Theme {
+                kind,
+                accent: Color::Reset,
+                dim: Color::Reset,
+                warn: Color::Reset,
+                err: Color::Reset,
+                ok: Color::Reset,
+                border: Color::Reset,
+                sel_bg: Color::Reset,
+                sel_fg: Color::Reset,
+            },
         }
     }
     pub fn mono(&self) -> bool {
