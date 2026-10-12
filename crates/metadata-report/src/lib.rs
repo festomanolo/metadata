@@ -337,15 +337,38 @@ mod tests {
         );
         f.time = metadata_core::time::parse_iso("2020-01-01T00:00:00Z");
         r.fields.push(f);
-        r.fields.push(metadata_core::Field::new("OOXML-Core", "Creator", creator, "native", metadata_core::Provenance::Stored));
+        r.fields.push(metadata_core::Field::new(
+            "OOXML-Core",
+            "Creator",
+            creator,
+            "native",
+            metadata_core::Provenance::Stored,
+        ));
         let now = metadata_core::time::parse_iso("2024-06-01T00:00:00Z").unwrap();
-        assess(&Input { case_id: "c<1>", root: std::path::Path::new("/p"), reports: &[r], claims: &c, thresholds: &Thresholds::default(), git: None, previous: None, project: ProjectSummary::default(), now })
+        assess(&Input {
+            case_id: "c<1>",
+            root: std::path::Path::new("/p"),
+            reports: &[r],
+            claims: &c,
+            thresholds: &Thresholds::default(),
+            git: None,
+            previous: None,
+            project: ProjectSummary::default(),
+            now,
+        })
     }
 
     #[test]
     fn html_escapes_untrusted_metadata_and_has_no_scripts() {
         let a = sample("<script>alert(1)</script>");
-        let h = html(&ReportInput { assessment: &a, events: &[], states: &BTreeMap::new(), notes: &[("t".into(), "<b>note</b>".into())], title: None, include_timeline: false });
+        let h = html(&ReportInput {
+            assessment: &a,
+            events: &[],
+            states: &BTreeMap::new(),
+            notes: &[("t".into(), "<b>note</b>".into())],
+            title: None,
+            include_timeline: false,
+        });
         assert!(!h.contains("<script"), "no script elements");
         assert!(!h.contains("<img src=x"), "file names are escaped");
         assert!(h.contains("&lt;img src=x onerror"));
