@@ -50,18 +50,30 @@ pub fn summarize(root: &Path, files: &[std::path::PathBuf]) -> ProjectSummary {
     };
     for f in files {
         let rel = f.strip_prefix(root).unwrap_or(f);
-        if rel.components().any(|c| SKIP_DIRS.contains(&c.as_os_str().to_string_lossy().as_ref())) {
+        if rel
+            .components()
+            .any(|c| SKIP_DIRS.contains(&c.as_os_str().to_string_lossy().as_ref()))
+        {
             continue;
         }
-        let name = rel.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        let name = rel
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
         if MANIFESTS.contains(&name.as_str()) {
             s.manifests.push(rel.display().to_string());
         }
         if name.to_ascii_lowercase().starts_with("readme") {
             s.has_readme = true;
         }
-        if let Some(ext) = f.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()) {
-            if let Some((_, lang)) = metadata_engine::detect::SOURCE_EXTS.iter().find(|(e, _)| *e == ext) {
+        if let Some(ext) = f
+            .extension()
+            .map(|e| e.to_string_lossy().to_ascii_lowercase())
+        {
+            if let Some((_, lang)) = metadata_engine::detect::SOURCE_EXTS
+                .iter()
+                .find(|(e, _)| *e == ext)
+            {
                 *s.languages.entry(lang.to_string()).or_default() += 1;
                 s.source_file_count += 1;
             }
