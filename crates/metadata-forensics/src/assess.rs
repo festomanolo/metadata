@@ -80,7 +80,7 @@ pub struct InventoryItem {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Integrity {
     pub files_rehashed: usize,
     pub unchanged: bool,
