@@ -170,16 +170,37 @@ pub fn build(
     let mut v = file_events(root, reports);
     if let Some(g) = git {
         for c in &g.commits {
-            v.push(Event { time: c.author_date.clone(), source: Source::Git, role: Role::Created, file: format!("git:{}", &c.hash[..c.hash.len().min(10)]), field: "author_date".into(), value: c.subject.clone() });
+            v.push(Event {
+                time: c.author_date.clone(),
+                source: Source::Git,
+                role: Role::Created,
+                file: format!("git:{}", &c.hash[..c.hash.len().min(10)]),
+                field: "author_date".into(),
+                value: c.subject.clone(),
+            });
         }
     }
     if let Some((label, t)) = intake {
-        v.push(Event { time: t.clone(), source: Source::Intake, role: Role::Other, file: "(intake)".into(), field: label.into(), value: t.iso.clone() });
+        v.push(Event {
+            time: t.clone(),
+            source: Source::Intake,
+            role: Role::Other,
+            file: "(intake)".into(),
+            field: label.into(),
+            value: t.iso.clone(),
+        });
     }
     if let Some(c) = claims {
         let mut push = |name: &str, d: &Option<String>| {
             if let Some(Ok(t)) = d.as_deref().map(parse_claim_time) {
-                v.push(Event { value: t.iso.clone(), time: t, source: Source::Declared, role: Role::Other, file: "(claim)".into(), field: name.into() });
+                v.push(Event {
+                    value: t.iso.clone(),
+                    time: t,
+                    source: Source::Declared,
+                    role: Role::Other,
+                    file: "(claim)".into(),
+                    field: name.into(),
+                });
             }
         };
         push("claimed start", &c.start);
@@ -189,7 +210,13 @@ pub fn build(
             push(&format!("milestone: {}", m.name), &Some(m.date.clone()));
         }
     }
-    v.sort_by(|a, b| a.time.sort_key().cmp(&b.time.sort_key()).then(a.source.cmp(&b.source)).then(a.file.cmp(&b.file)));
+    v.sort_by(|a, b| {
+        a.time
+            .sort_key()
+            .cmp(&b.time.sort_key())
+            .then(a.source.cmp(&b.source))
+            .then(a.file.cmp(&b.file))
+    });
     v
 }
 
