@@ -953,7 +953,13 @@ impl App {
             Ok(p) => {
                 let mut lines = vec![format!("{} · backend {}", p.format, p.backend)];
                 for c in &p.changes {
-                    lines.push(format!("{} {}: {} → {}", if c.action == "set" { "~" } else { "-" }, c.key, c.before.as_deref().unwrap_or("(unset)"), c.after.as_deref().unwrap_or("(removed)")));
+                    lines.push(format!(
+                        "{} {}: {} → {}",
+                        if c.action == "set" { "~" } else { "-" },
+                        c.key,
+                        c.before.as_deref().unwrap_or("(unset)"),
+                        c.after.as_deref().unwrap_or("(removed)")
+                    ));
                 }
                 lines.extend(p.warnings.iter().map(|w| format!("! {w}")));
                 self.edit.preview = lines;
@@ -969,10 +975,18 @@ impl App {
     }
 
     fn do_write(&mut self) {
-        let (Some(p), Some(r)) = (self.edit.plan.clone(), self.current().cloned()) else { return };
+        let (Some(p), Some(r)) = (self.edit.plan.clone(), self.current().cloned()) else {
+            return;
+        };
         let src = PathBuf::from(&r.path);
-        let stem = src.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        let ext = src.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
+        let stem = src
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let ext = src
+            .extension()
+            .map(|e| format!(".{}", e.to_string_lossy()))
+            .unwrap_or_default();
         let mut dest = src.with_file_name(format!("{stem}.edited{ext}"));
         let mut n = 2;
         while dest.exists() {
@@ -980,11 +994,26 @@ impl App {
             n += 1;
         }
         let engine = self.engine(None);
-        match execute(&engine, &src, &dest, &p, &ApplyOpts { allow_signature_loss: false, // never auto-accepted from the TUI; use the CLI flag deliberately
-                 ..Default::default() }) {
+        match execute(
+            &engine,
+            &src,
+            &dest,
+            &p,
+            &ApplyOpts {
+                allow_signature_loss: false, // never auto-accepted from the TUI; use the CLI flag deliberately
+                ..Default::default()
+            },
+        ) {
             Ok(o) => {
-                let mut res = vec![format!("Wrote {} (verified: {})", o.destination, o.verified), format!("sha256 {}", o.destination_sha256)];
-                res.extend(o.unexpected_changes.iter().map(|u| format!("! unexpected: {u}")));
+                let mut res = vec![
+                    format!("Wrote {} (verified: {})", o.destination, o.verified),
+                    format!("sha256 {}", o.destination_sha256),
+                ];
+                res.extend(
+                    o.unexpected_changes
+                        .iter()
+                        .map(|u| format!("! unexpected: {u}")),
+                );
                 if let Some(n) = &o.residual_note {
                     res.push(n.clone());
                 }
