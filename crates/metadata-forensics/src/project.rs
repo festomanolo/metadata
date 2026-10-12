@@ -13,15 +13,41 @@ pub struct ProjectSummary {
 }
 
 const MANIFESTS: &[&str] = &[
-    "Cargo.toml", "package.json", "requirements.txt", "pyproject.toml", "setup.py", "pom.xml", "build.gradle", "build.gradle.kts",
-    "go.mod", "Gemfile", "composer.json", "CMakeLists.txt", "Makefile", "pubspec.yaml", "Package.swift", "environment.yml",
+    "Cargo.toml",
+    "package.json",
+    "requirements.txt",
+    "pyproject.toml",
+    "setup.py",
+    "pom.xml",
+    "build.gradle",
+    "build.gradle.kts",
+    "go.mod",
+    "Gemfile",
+    "composer.json",
+    "CMakeLists.txt",
+    "Makefile",
+    "pubspec.yaml",
+    "Package.swift",
+    "environment.yml",
 ];
 
-const SKIP_DIRS: &[&str] = &[".git", "node_modules", "target", "__pycache__", ".venv", "venv", "build", "dist"];
+const SKIP_DIRS: &[&str] = &[
+    ".git",
+    "node_modules",
+    "target",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+];
 
 /// `files` are paths from a scan; `root` is used to relativize and detect skipped dirs.
 pub fn summarize(root: &Path, files: &[std::path::PathBuf]) -> ProjectSummary {
-    let mut s = ProjectSummary { has_git: crate::git::has_repo(root), ..Default::default() };
+    let mut s = ProjectSummary {
+        has_git: crate::git::has_repo(root),
+        ..Default::default()
+    };
     for f in files {
         let rel = f.strip_prefix(root).unwrap_or(f);
         if rel.components().any(|c| SKIP_DIRS.contains(&c.as_os_str().to_string_lossy().as_ref())) {
