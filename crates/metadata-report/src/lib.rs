@@ -88,16 +88,38 @@ fn finding_html(o: &mut String, f: &Finding, st: Option<&FindingState>) {
     let mut ev =
         String::from("<table><tr><th>File</th><th>Field</th><th>Value</th><th>Source</th></tr>");
     for e in &f.evidence {
-        let _ = write!(ev, "<tr><td class=\"mono\">{}</td><td class=\"mono\">{}</td><td>{}</td><td>{}</td></tr>", esc(&e.file), esc(&e.field), esc(&e.value), e.source.label());
+        let _ = write!(
+            ev,
+            "<tr><td class=\"mono\">{}</td><td class=\"mono\">{}</td><td>{}</td><td>{}</td></tr>",
+            esc(&e.file),
+            esc(&e.field),
+            esc(&e.value),
+            e.source.label()
+        );
     }
     ev.push_str("</table>");
     if f.evidence_omitted > 0 {
-        let _ = write!(ev, "<p class=\"dim\">… {} more evidence item(s) in the JSON export.</p>", f.evidence_omitted);
+        let _ = write!(
+            ev,
+            "<p class=\"dim\">… {} more evidence item(s) in the JSON export.</p>",
+            f.evidence_omitted
+        );
     }
     row(o, "Evidence", &ev);
-    let benign: String = f.benign_explanations.iter().map(|b| format!("<li>{}</li>", esc(b))).collect();
+    let benign: String = f
+        .benign_explanations
+        .iter()
+        .map(|b| format!("<li>{}</li>", esc(b)))
+        .collect();
     row(o, "Could also be", &format!("<ul>{benign}</ul>"));
-    row(o, "Confidence", &format!("observation <b>{:?}</b> · interpretation <b>{:?}</b>", f.observation_confidence, f.interpretation_confidence));
+    row(
+        o,
+        "Confidence",
+        &format!(
+            "observation <b>{:?}</b> · interpretation <b>{:?}</b>",
+            f.observation_confidence, f.interpretation_confidence
+        ),
+    );
     row(o, "Suggested follow-up", &esc(&f.follow_up));
     if let Some(s) = st {
         if let Some(r) = &s.reason {
