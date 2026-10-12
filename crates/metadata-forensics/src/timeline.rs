@@ -60,9 +60,35 @@ pub struct Event {
 
 pub fn role_of(name: &str) -> Role {
     let n = name.to_ascii_lowercase().replace([' ', '_', '-'], "");
-    if ["created", "createdate", "creationdate", "creationtime", "datetimeoriginal", "datetimedigitized", "datecreated", "creatim", "mediacreatedate", "trackcreatedate"].contains(&n.as_str()) {
+    if [
+        "created",
+        "createdate",
+        "creationdate",
+        "creationtime",
+        "datetimeoriginal",
+        "datetimedigitized",
+        "datecreated",
+        "creatim",
+        "mediacreatedate",
+        "trackcreatedate",
+    ]
+    .contains(&n.as_str())
+    {
         Role::Created
-    } else if ["modified", "modifydate", "moddate", "date", "datetime", "lastmodified", "revtim", "metadatadate", "mediamodifydate", "trackmodifydate"].contains(&n.as_str()) {
+    } else if [
+        "modified",
+        "modifydate",
+        "moddate",
+        "date",
+        "datetime",
+        "lastmodified",
+        "revtim",
+        "metadatadate",
+        "mediamodifydate",
+        "trackmodifydate",
+    ]
+    .contains(&n.as_str())
+    {
         Role::Modified
     } else {
         Role::Other
@@ -70,7 +96,13 @@ pub fn role_of(name: &str) -> Role {
 }
 
 pub fn rel(root: &Path, p: &str) -> String {
-    Path::new(p).strip_prefix(root).unwrap_or(Path::new(p)).components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/")
+    Path::new(p)
+        .strip_prefix(root)
+        .unwrap_or(Path::new(p))
+        .components()
+        .map(|c| c.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 /// Events from files only (no git/declared).
@@ -78,7 +110,10 @@ pub fn file_events(root: &Path, reports: &[FileReport]) -> Vec<Event> {
     let mut v = vec![];
     for r in reports {
         let file = rel(root, &r.path);
-        for (name, t) in [("created", &r.filesystem.created), ("modified", &r.filesystem.modified)] {
+        for (name, t) in [
+            ("created", &r.filesystem.created),
+            ("modified", &r.filesystem.modified),
+        ] {
             if let Some(t) = t {
                 v.push(Event { time: t.clone(), source: Source::Filesystem, role: if name == "created" { Role::Created } else { Role::Modified }, file: file.clone(), field: format!("Filesystem:{name}"), value: t.iso.clone() });
             }
