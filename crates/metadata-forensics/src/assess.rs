@@ -88,7 +88,7 @@ pub struct Integrity {
     pub note: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Assessment {
     pub schema: String,
     pub tool: String,
@@ -102,6 +102,9 @@ pub struct Assessment {
     pub git_commits: Option<usize>,
     pub findings: Vec<Finding>,
     pub integrity: Option<Integrity>,
+    /// True once `redact()` has masked personal identifiers in evidence values.
+    #[serde(default)]
+    pub personal_data_redacted: bool,
     pub checks_not_implemented: Vec<String>,
     pub limitations: Vec<String>,
     pub disclaimer: String,
