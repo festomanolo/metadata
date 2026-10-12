@@ -911,23 +911,49 @@ fn rule_git(
             ),
             severity: Severity::Review,
             priority: 3,
-            evidence: back.iter().map(|(cm, pc)| Evidence { file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]), field: "commit date vs parent".into(), value: format!("{} < parent {}", cm.commit_date.iso, pc.commit_date.iso), source: Source::Git }).collect(),
+            evidence: back
+                .iter()
+                .map(|(cm, pc)| Evidence {
+                    file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]),
+                    field: "commit date vs parent".into(),
+                    value: format!("{} < parent {}", cm.commit_date.iso, pc.commit_date.iso),
+                    source: Source::Git,
+                })
+                .collect(),
             comparison_rule: "child committer date + 2 min < parent committer date".into(),
             explanation: "History order and recorded dates disagree.".into(),
-            benign: vec!["Clock changes or skew between machines.", "Rebases, cherry-picks or merges of work done elsewhere."],
+            benign: vec![
+                "Clock changes or skew between machines.",
+                "Rebases, cherry-picks or merges of work done elsewhere.",
+            ],
             obs: Confidence::High,
             interp: Confidence::Low,
             follow_up: "Inspect these commits' author/committer dates and the branch structure.",
         });
     }
-    let skewed: Vec<_> = g.commits.iter().filter(|cm| (secs(&cm.author_date) - secs(&cm.commit_date)).abs() > 86_400).collect();
+    let skewed: Vec<_> = g
+        .commits
+        .iter()
+        .filter(|cm| (secs(&cm.author_date) - secs(&cm.commit_date)).abs() > 86_400)
+        .collect();
     if !skewed.is_empty() {
         c.push(Draft {
             rule: "GIT-AUTHOR-COMMIT-SKEW",
-            title: format!("{} commit(s) have author and committer dates more than a day apart", skewed.len()),
+            title: format!(
+                "{} commit(s) have author and committer dates more than a day apart",
+                skewed.len()
+            ),
             severity: Severity::Info,
             priority: 1,
-            evidence: skewed.iter().map(|cm| Evidence { file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]), field: "author vs commit date".into(), value: format!("{} / {}", cm.author_date.iso, cm.commit_date.iso), source: Source::Git }).collect(),
+            evidence: skewed
+                .iter()
+                .map(|cm| Evidence {
+                    file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]),
+                    field: "author vs commit date".into(),
+                    value: format!("{} / {}", cm.author_date.iso, cm.commit_date.iso),
+                    source: Source::Git,
+                })
+                .collect(),
             comparison_rule: "|author date - committer date| > 24h".into(),
             explanation: "Typical of rebased, amended or cherry-picked commits.".into(),
             benign: vec!["Ordinary rebase or amend workflows."],
@@ -940,7 +966,14 @@ fn rule_git(
 }
 
 fn rule_gaps(c: &mut Ctx, emb: &[&Event], start: &Option<DayRange>, end: &Option<DayRange>) {
-    let mut times: Vec<(i64, String)> = emb.iter().filter_map(|e| e.time.sort_key().map(|k| (k, format!("{} {}", e.file, e.field)))).collect();
+    let mut times: Vec<(i64, String)> = emb
+        .iter()
+        .filter_map(|e| {
+            e.time
+                .sort_key()
+                .map(|k| (k, format!("{} {}", e.file, e.field)))
+        })
+        .collect();
     if let Some(g) = c.i.git {
         times.extend(g.commits.iter().filter_map(|cm| cm.author_date.sort_key().map(|k| (k, format!("git:{}", &cm.hash[..10.min(cm.hash.len())])))));
     }
