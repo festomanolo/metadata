@@ -903,19 +903,53 @@ fn draw_modal(f: &mut Frame, area: Rect, app: &App, t: &Theme) {
                 }
             }
             lines.push(Line::from(""));
-            lines.push(Line::from(Span::styled("y / Enter = write     any other key = cancel", t.dim_s())));
+            lines.push(Line::from(Span::styled(
+                "y / Enter = write     any other key = cancel",
+                t.dim_s(),
+            )));
             f.render_widget(Paragraph::new(lines).block(panel(t, "Confirm", true)), r);
         }
         Modal::Search { buf, .. } => {
-            let r = Rect { x: area.x, y: area.y + area.height.saturating_sub(2), width: area.width, height: 1 };
+            let r = Rect {
+                x: area.x,
+                y: area.y + area.height.saturating_sub(2),
+                width: area.width,
+                height: 1,
+            };
             f.render_widget(Clear, r);
-            f.render_widget(Paragraph::new(Line::from(vec![Span::styled("/", t.accent_s()), Span::raw(buf.clone()), Span::styled("▏", t.accent_s()), Span::styled("   Enter keep · Esc then / to refine", t.dim_s())])), r);
+            f.render_widget(
+                Paragraph::new(Line::from(vec![
+                    Span::styled("/", t.accent_s()),
+                    Span::raw(buf.clone()),
+                    Span::styled("▏", t.accent_s()),
+                    Span::styled("   Enter keep · Esc then / to refine", t.dim_s()),
+                ])),
+                r,
+            );
         }
-        Modal::Input { prompt, buf, purpose } => {
+        Modal::Input {
+            prompt,
+            buf,
+            purpose,
+        } => {
             let r = centered(area, 70, 5);
             f.render_widget(Clear, r);
-            let hint = if *purpose == InputPurpose::ScanPath { "Enter to start · Esc to cancel" } else { "Enter to queue · Esc to cancel" };
-            f.render_widget(Paragraph::new(vec![Line::from(vec![Span::raw(buf.clone()), Span::styled("▏", t.accent_s())]), Line::from(Span::styled(hint, t.dim_s()))]).block(panel(t, prompt, true)), r);
+            let hint = if *purpose == InputPurpose::ScanPath {
+                "Enter to start · Esc to cancel"
+            } else {
+                "Enter to queue · Esc to cancel"
+            };
+            f.render_widget(
+                Paragraph::new(vec![
+                    Line::from(vec![
+                        Span::raw(buf.clone()),
+                        Span::styled("▏", t.accent_s()),
+                    ]),
+                    Line::from(Span::styled(hint, t.dim_s())),
+                ])
+                .block(panel(t, prompt, true)),
+                r,
+            );
         }
     }
 }
