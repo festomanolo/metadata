@@ -75,14 +75,7 @@ fn renders_all_regions_at_80x24_and_120x40() {
         let s = screen(&app, w, h);
         assert!(s.contains("METADATA"), "header");
         for label in [
-            "Overview",
-            "Inspect",
-            "Scan",
-            "Timeline",
-            "Compare",
-            "Edit",
-            "Cases",
-            "Reports",
+            "Overview", "Inspect", "Scan", "Timeline", "Compare", "Edit", "Cases", "Reports",
             "Settings",
         ] {
             assert!(s.contains(label), "nav {label} at {w}x{h}");
