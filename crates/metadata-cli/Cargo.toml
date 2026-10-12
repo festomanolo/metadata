@@ -15,6 +15,8 @@ metadata-core = { version = "0.1.0", path = "../metadata-core" }
 metadata-edit = { version = "0.1.0", path = "../metadata-edit" }
 metadata-engine = { version = "0.1.0", path = "../metadata-engine" }
 metadata-forensics = { version = "0.1.0", path = "../metadata-forensics" }
+metadata-report = { version = "0.1.0", path = "../metadata-report" }
+metadata-storage = { version = "0.1.0", path = "../metadata-storage" }
 metadata-tui = { version = "0.1.0", path = "../metadata-tui" }
 rayon = "1.12.0"
 serde = { version = "1.0.229", features = ["derive"] }
