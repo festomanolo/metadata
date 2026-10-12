@@ -96,12 +96,27 @@ impl Store {
     // ---------- cases ----------
 
     pub fn create_case(&self, id: &str, title: &str, claims: &Claims) -> Result<()> {
-        if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')) {
-            return Err(MetaError::InvalidArgument("case id may contain letters, digits, '-', '_' and '.' only".into()));
+        if id.is_empty()
+            || !id
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+        {
+            return Err(MetaError::InvalidArgument(
+                "case id may contain letters, digits, '-', '_' and '.' only".into(),
+            ));
         }
-        let r = self.conn.execute("INSERT INTO cases (id, title, created_at, claims_json) VALUES (?1, ?2, ?3, ?4)", params![id, title, now(), js(claims)?]);
+        let r = self.conn.execute(
+            "INSERT INTO cases (id, title, created_at, claims_json) VALUES (?1, ?2, ?3, ?4)",
+            params![id, title, now(), js(claims)?],
+        );
         match r {
-            Err(rusqlite::Error::SqliteFailure(e, _)) if e.code == rusqlite::ErrorCode::ConstraintViolation => Err(MetaError::InvalidArgument(format!("case '{id}' already exists"))),
+            Err(rusqlite::Error::SqliteFailure(e, _))
+                if e.code == rusqlite::ErrorCode::ConstraintViolation =>
+            {
+                Err(MetaError::InvalidArgument(format!(
+                    "case '{id}' already exists"
+                )))
+            }
             other => db(other).map(|_| ()),
         }
     }
