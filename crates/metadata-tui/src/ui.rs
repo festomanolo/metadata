@@ -240,50 +240,148 @@ fn draw_overview(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
     let lines = vec![
         kv("Files examined", s.files.to_string(), t.base()),
         kv("Metadata fields extracted", s.fields.to_string(), t.base()),
-        kv("Files with no stored metadata", s.missing_metadata.to_string(), t.base()),
-        kv("Need review (warnings/mismatch)", s.needs_review.to_string(), if s.needs_review > 0 { t.warn_s() } else { t.base() }),
-        kv("Limited support (see Details)", s.unsupported.to_string(), t.base()),
-        kv("Extraction errors", s.errors.to_string(), if s.errors > 0 { t.err_s() } else { t.base() }),
+        kv(
+            "Files with no stored metadata",
+            s.missing_metadata.to_string(),
+            t.base(),
+        ),
+        kv(
+            "Need review (warnings/mismatch)",
+            s.needs_review.to_string(),
+            if s.needs_review > 0 {
+                t.warn_s()
+            } else {
+                t.base()
+            },
+        ),
+        kv(
+            "Limited support (see Details)",
+            s.unsupported.to_string(),
+            t.base(),
+        ),
+        kv(
+            "Extraction errors",
+            s.errors.to_string(),
+            if s.errors > 0 { t.err_s() } else { t.base() },
+        ),
         kv("Warnings", s.warnings.to_string(), t.base()),
     ];
     f.render_widget(Paragraph::new(lines).block(panel(t, "Session", false)), l);
     let mut fm: Vec<(&String, &usize)> = s.formats.iter().collect();
     fm.sort_by(|a, b| b.1.cmp(a.1).then(a.0.cmp(b.0)));
-    let items: Vec<Line> = if fm.is_empty() { vec![Line::from(Span::styled("No files loaded. Open Batch Scan (3) and press Enter.", t.dim_s()))] } else { fm.iter().take(7).map(|(k, v)| Line::from(vec![Span::styled(format!("{k:<14}"), t.base()), Span::styled(v.to_string(), t.accent_s())])).collect() };
-    f.render_widget(Paragraph::new(items).block(panel(t, "File types detected", false)), r);
-    let mut lines: Vec<Line> = app.backend_status.iter().map(|b| {
-        let (mark, st) = if b.available { ("available", t.ok_s()) } else { ("missing", t.warn_s()) };
-        Line::from(vec![Span::styled(format!("{:<10}", b.name), t.base()), Span::styled(format!("{mark:<10}"), st), Span::styled(b.version.clone().unwrap_or_default(), t.dim_s())])
-    }).collect();
+    let items: Vec<Line> = if fm.is_empty() {
+        vec![Line::from(Span::styled(
+            "No files loaded. Open Batch Scan (3) and press Enter.",
+            t.dim_s(),
+        ))]
+    } else {
+        fm.iter()
+            .take(7)
+            .map(|(k, v)| {
+                Line::from(vec![
+                    Span::styled(format!("{k:<14}"), t.base()),
+                    Span::styled(v.to_string(), t.accent_s()),
+                ])
+            })
+            .collect()
+    };
+    f.render_widget(
+        Paragraph::new(items).block(panel(t, "File types detected", false)),
+        r,
+    );
+    let mut lines: Vec<Line> = app
+        .backend_status
+        .iter()
+        .map(|b| {
+            let (mark, st) = if b.available {
+                ("available", t.ok_s())
+            } else {
+                ("missing", t.warn_s())
+            };
+            Line::from(vec![
+                Span::styled(format!("{:<10}", b.name), t.base()),
+                Span::styled(format!("{mark:<10}"), st),
+                Span::styled(b.version.clone().unwrap_or_default(), t.dim_s()),
+            ])
+        })
+        .collect();
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled("Recent operations", t.accent_s())));
     if app.recent.is_empty() {
         lines.push(Line::from(Span::styled("  none yet", t.dim_s())));
     }
-    lines.extend(app.recent.iter().map(|r| Line::from(format!("  {}", clip(r, a.width as usize - 6)))));
-    f.render_widget(Paragraph::new(lines).block(panel(t, "Backends & activity", false)), bottom);
+    lines.extend(
+        app.recent
+            .iter()
+            .map(|r| Line::from(format!("  {}", clip(r, a.width as usize - 6)))),
+    );
+    f.render_widget(
+        Paragraph::new(lines).block(panel(t, "Backends & activity", false)),
+        bottom,
+    );
 }
 
 fn draw_inspect(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
     let lw = (a.width / 3).clamp(24, 44);
     let [l, r] = Layout::horizontal([Constraint::Length(lw), Constraint::Min(20)]).areas(a);
-    let sort = match app.sort { SortKey::Name => "name", SortKey::Size => "size", SortKey::Format => "format", SortKey::Warnings => "warnings" };
-    let title = format!("Files {}/{} · sort {sort}{}", app.visible.len(), app.reports.len(), if app.file_filter.is_empty() { String::new() } else { format!(" · /{}", app.file_filter) });
-    let items: Vec<ListItem> = app.visible.iter().map(|&i| {
-        let rp = &app.reports[i];
-        let rel = std::path::Path::new(&rp.path).strip_prefix(&app.root).unwrap_or(std::path::Path::new(&rp.path)).display().to_string();
-        let mut spans = vec![];
-        if app.mark == Some(i) { spans.push(Span::styled("◆ ", t.accent_s())); }
-        if rp.error.is_some() { spans.push(Span::styled("✗ ", t.err_s())); } else if !rp.warnings.is_empty() { spans.push(Span::styled("! ", t.warn_s())); }
-        spans.push(Span::raw(clip(&rel, lw as usize - 8)));
-        ListItem::new(Line::from(spans))
-    }).collect();
-    let mut st = ListState::default().with_selected(if app.visible.is_empty() { None } else { Some(app.file_sel) });
-    let list = List::new(items).block(panel(t, &title, app.focus == Focus::Files)).highlight_style(t.sel_s());
+    let sort = match app.sort {
+        SortKey::Name => "name",
+        SortKey::Size => "size",
+        SortKey::Format => "format",
+        SortKey::Warnings => "warnings",
+    };
+    let title = format!(
+        "Files {}/{} · sort {sort}{}",
+        app.visible.len(),
+        app.reports.len(),
+        if app.file_filter.is_empty() {
+            String::new()
+        } else {
+            format!(" · /{}", app.file_filter)
+        }
+    );
+    let items: Vec<ListItem> = app
+        .visible
+        .iter()
+        .map(|&i| {
+            let rp = &app.reports[i];
+            let rel = std::path::Path::new(&rp.path)
+                .strip_prefix(&app.root)
+                .unwrap_or(std::path::Path::new(&rp.path))
+                .display()
+                .to_string();
+            let mut spans = vec![];
+            if app.mark == Some(i) {
+                spans.push(Span::styled("◆ ", t.accent_s()));
+            }
+            if rp.error.is_some() {
+                spans.push(Span::styled("✗ ", t.err_s()));
+            } else if !rp.warnings.is_empty() {
+                spans.push(Span::styled("! ", t.warn_s()));
+            }
+            spans.push(Span::raw(clip(&rel, lw as usize - 8)));
+            ListItem::new(Line::from(spans))
+        })
+        .collect();
+    let mut st = ListState::default().with_selected(if app.visible.is_empty() {
+        None
+    } else {
+        Some(app.file_sel)
+    });
+    let list = List::new(items)
+        .block(panel(t, &title, app.focus == Focus::Files))
+        .highlight_style(t.sel_s());
     f.render_stateful_widget(list, l, &mut st);
 
     let rows = app.field_rows();
-    let title = format!("Metadata{}", if app.field_filter.is_empty() { String::new() } else { format!(" · /{}", app.field_filter) });
+    let title = format!(
+        "Metadata{}",
+        if app.field_filter.is_empty() {
+            String::new()
+        } else {
+            format!(" · /{}", app.field_filter)
+        }
+    );
     let Some(rep) = app.current() else {
         f.render_widget(Paragraph::new(Span::styled("No file selected. Scan a directory from Batch Scan (3).", t.dim_s())).block(panel(t, &title, false)), r);
         return;
