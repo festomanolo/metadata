@@ -128,3 +128,133 @@ fn t(tv: &TimeValue) -> Option<T> {
 }
 fn tol(a_exact: bool, b_exact: bool, th: &Thresholds) -> i64 {
     if a_exact && b_exact {
+        120
+    } else {
+        th.tolerance_hours * 3600
+    }
+}
+fn conf_obs(a_exact: bool, b_exact: bool) -> Confidence {
+    if a_exact && b_exact {
+        Confidence::High
+    } else {
+        Confidence::Medium
+    }
+}
+fn claim_exact(r: &DayRange) -> bool {
+    r.start == r.end
+}
+
+const MAX_EVIDENCE: usize = 25;
+
+struct Ctx<'a> {
+    i: &'a Input<'a>,
+    out: Vec<Finding>,
+}
+
+struct Draft {
+    rule: &'static str,
+    title: String,
+    severity: Severity,
+    priority: u8,
+    evidence: Vec<Evidence>,
+    comparison_rule: String,
+    explanation: String,
+    benign: Vec<&'static str>,
+    obs: Confidence,
+    interp: Confidence,
+    follow_up: &'static str,
+}
+
+impl Ctx<'_> {
+    fn push(&mut self, d: Draft) {
+        let mut keys: Vec<String> = d.evidence.iter().map(|e| format!("{}|{}|{}", e.file, e.field, e.value)).collect();
+        keys.sort();
+        let id = format!("{}-{}", d.rule, &sha256_bytes(format!("{}\n{}", d.rule, keys.join("\n")).as_bytes())[..8]);
+        let mut files: Vec<String> = d.evidence.iter().map(|e| e.file.clone()).collect();
+        files.sort();
+        files.dedup();
+        let omitted = d.evidence.len().saturating_sub(MAX_EVIDENCE);
+        let mut evidence = d.evidence;
+        evidence.truncate(MAX_EVIDENCE);
+        self.out.push(Finding {
+            id,
+            rule: d.rule.into(),
+            title: d.title,
+            severity: d.severity,
+            review_priority: d.priority,
+            files,
+            evidence,
+            evidence_omitted: omitted,
+            comparison_rule: d.comparison_rule,
+            explanation: d.explanation,
+            benign_explanations: d.benign.into_iter().map(String::from).collect(),
+            observation_confidence: d.obs,
+            interpretation_confidence: d.interp,
+            follow_up: d.follow_up.into(),
+        });
+    }
+}
+
+fn ev(e: &Event) -> Evidence {
+    Evidence { file: e.file.clone(), field: e.field.clone(), value: e.value.clone(), source: e.source }
+}
+
+fn cat_of<'a>(reports: &'a [FileReport], root: &Path, file: &str) -> Option<&'a FileReport> {
+    reports.iter().find(|r| rel(root, &r.path) == file)
+}
+
+const STD_BENIGN_TIME: [&str; 3] = [
+    "The timezone is not recorded, so the comparison allows a tolerance for local-time ambiguity.",
+    "Files copied, converted, re-saved or created from a template can retain timestamps from earlier work.",
+    "The creating device's clock may have been wrong.",
+];
+
+pub fn assess(input: &Input) -> Assessment {
+    let mut c = Ctx { i: input, out: vec![] };
+    let root = input.root;
+    let events = timeline::file_events(root, input.reports);
+    let embedded: Vec<&Event> = events.iter().filter(|e| e.source == Source::Embedded).collect();
+    let claims = input.claims;
+    let th = input.thresholds;
+    let start = claims.start.as_deref().and_then(|s| parse_claim(s).ok());
+    let deadline = claims.deadline.as_deref().and_then(|s| parse_claim(s).ok());
+    let completion = claims.completion.as_deref().and_then(|s| parse_claim(s).ok());
+    let now = t(&input.now);
+
+    rule_future(&mut c, &embedded, &now);
+    if let Some(s) = &start {
+        rule_before_start(&mut c, &embedded, s);
+    }
+    for (label, d) in [("deadline", &deadline), ("claimed completion", &completion)] {
+        if let Some(d) = d {
+            rule_after(&mut c, &embedded, d, label, &now);
+        }
+    }
+    rule_modified_before_created(&mut c, &embedded);
+    for m in &claims.milestones {
+        if let Ok(r) = parse_claim(&m.date) {
+            rule_milestone(&mut c, &embedded, &m.name, &r, m.path_contains.as_deref());
+        }
+    }
+    rule_uniform(&mut c, &events);
+    rule_ext_mismatch(&mut c);
+    rule_duplicates(&mut c);
+    rule_missing_metadata(&mut c);
+    rule_incremental(&mut c, &start, &deadline, &completion);
+    if let Some(g) = input.git {
+        rule_git(&mut c, g, &start, &deadline, &now);
+    }
+    rule_gaps(&mut c, &embedded, &start, &deadline.or(completion));
+    if let Some((proot, prev)) = input.previous {
+        rule_previous(&mut c, proot, prev);
+    }
+
+    let mut findings = c.out;
+    findings.sort_by(|a, b| b.severity.cmp(&a.severity).then(b.review_priority.cmp(&a.review_priority)).then(a.id.cmp(&b.id)));
+    findings.dedup_by(|a, b| a.id == b.id);
+
+    let inventory = input
+        .reports
+        .iter()
+        .map(|r| InventoryItem {
+            path: rel(root, &r.path),
