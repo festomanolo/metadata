@@ -102,6 +102,10 @@ fn run(cli: Cli) -> Result<i32> {
             check_extra,
             format,
         } => cmd_verify(&ctx, &manifest, root, check_extra, format),
+        Cmd::Timeline { paths, source, no_git, manifest, claims, c } => forensic::cmd_timeline(&ctx, &paths, &source, no_git, manifest, claims, &c),
+        Cmd::Assess { path, case, student, start, completion, deadline, milestone, claims, previous, no_git, include_personal, min_severity, c } => {
+            forensic::cmd_assess(&ctx, forensic::AssessArgs { path, case, student, start, completion, deadline, milestone, claims, previous, no_git, include_personal, min_severity }, &c)
+        }
         Cmd::Capabilities { format } => cmd_caps(&ctx, format),
         Cmd::Doctor { format } => cmd_doctor(&ctx, format),
         Cmd::Config { path, init } => cmd_config(&ctx, path, init),
