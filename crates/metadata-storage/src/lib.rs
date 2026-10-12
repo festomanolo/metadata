@@ -278,7 +278,15 @@ impl Store {
         let mut m = BTreeMap::new();
         for r in rows {
             let (id, status, note, reason, updated_at) = db(r)?;
-            m.insert(id, FindingState { status: FindingStatus::parse(&status).unwrap_or(FindingStatus::Open), note, reason, updated_at });
+            m.insert(
+                id,
+                FindingState {
+                    status: FindingStatus::parse(&status).unwrap_or(FindingStatus::Open),
+                    note,
+                    reason,
+                    updated_at,
+                },
+            );
         }
         Ok(m)
     }
@@ -287,13 +295,23 @@ impl Store {
         if self.get_case(case)?.is_none() {
             return Err(MetaError::InvalidArgument(format!("no such case '{case}'")));
         }
-        db(self.conn.execute("INSERT INTO notes (case_id, at, text) VALUES (?1,?2,?3)", params![case, now(), text]))?;
+        db(self.conn.execute(
+            "INSERT INTO notes (case_id, at, text) VALUES (?1,?2,?3)",
+            params![case, now(), text],
+        ))?;
         Ok(())
     }
 
     pub fn notes(&self, case: &str) -> Result<Vec<NoteRow>> {
-        let mut st = db(self.conn.prepare("SELECT at, text FROM notes WHERE case_id = ?1 ORDER BY id"))?;
-        let rows = db(st.query_map([case], |r| Ok(NoteRow { at: r.get(0)?, text: r.get(1)? })))?;
+        let mut st = db(self
+            .conn
+            .prepare("SELECT at, text FROM notes WHERE case_id = ?1 ORDER BY id"))?;
+        let rows = db(st.query_map([case], |r| {
+            Ok(NoteRow {
+                at: r.get(0)?,
+                text: r.get(1)?,
+            })
+        }))?;
         Ok(rows.filter_map(|x| x.ok()).collect())
     }
 
