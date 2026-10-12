@@ -378,13 +378,29 @@ mod tests {
     #[test]
     fn case_lifecycle_and_search() {
         let s = Store::open_memory().unwrap();
-        s.create_case("s-001", "Alice final project", &Claims { start: Some("2024-01-10".into()), ..Default::default() }).unwrap();
+        s.create_case(
+            "s-001",
+            "Alice final project",
+            &Claims {
+                start: Some("2024-01-10".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
         assert!(s.create_case("s-001", "dup", &Claims::default()).is_err());
         assert!(s.create_case("bad id!", "x", &Claims::default()).is_err());
         s.create_case("s-002", "Bob", &Claims::default()).unwrap();
         assert_eq!(s.list_cases(None).unwrap().len(), 2);
         assert_eq!(s.list_cases(Some("alice")).unwrap()[0].id, "s-001");
-        assert_eq!(s.get_case("s-001").unwrap().unwrap().claims.start.as_deref(), Some("2024-01-10"));
+        assert_eq!(
+            s.get_case("s-001")
+                .unwrap()
+                .unwrap()
+                .claims
+                .start
+                .as_deref(),
+            Some("2024-01-10")
+        );
         assert!(s.get_case("nope").unwrap().is_none());
     }
 
@@ -404,11 +420,24 @@ mod tests {
     fn dismissal_requires_reason_and_states_persist() {
         let s = Store::open_memory().unwrap();
         s.create_case("c", "t", &Claims::default()).unwrap();
-        assert!(s.set_finding_state("c", "TS-1", FindingStatus::Dismissed, None, None).is_err());
-        assert!(s.set_finding_state("c", "TS-1", FindingStatus::Dismissed, None, Some("  ")).is_err());
-        s.set_finding_state("c", "TS-1", FindingStatus::Dismissed, Some("checked"), Some("template file")).unwrap();
-        s.set_finding_state("c", "TS-2", FindingStatus::Reviewed, Some("ok"), None).unwrap();
-        s.set_finding_state("c", "TS-2", FindingStatus::Open, None, None).unwrap();
+        assert!(s
+            .set_finding_state("c", "TS-1", FindingStatus::Dismissed, None, None)
+            .is_err());
+        assert!(s
+            .set_finding_state("c", "TS-1", FindingStatus::Dismissed, None, Some("  "))
+            .is_err());
+        s.set_finding_state(
+            "c",
+            "TS-1",
+            FindingStatus::Dismissed,
+            Some("checked"),
+            Some("template file"),
+        )
+        .unwrap();
+        s.set_finding_state("c", "TS-2", FindingStatus::Reviewed, Some("ok"), None)
+            .unwrap();
+        s.set_finding_state("c", "TS-2", FindingStatus::Open, None, None)
+            .unwrap();
         let m = s.finding_states("c").unwrap();
         assert_eq!(m["TS-1"].status, FindingStatus::Dismissed);
         assert_eq!(m["TS-1"].reason.as_deref(), Some("template file"));
@@ -446,6 +475,25 @@ mod tests {
 
     fn sample_report() -> FileReport {
         use metadata_core::*;
-        FileReport { schema_version: SCHEMA_VERSION.into(), path: "a".into(), size: 1, sha256: Some("abc".into()), format: FormatInfo { id: "text".into(), description: "".into(), mime: "".into(), category: Category::Text, extension_match: ExtensionMatch::Match, signature_hex: "".into() }, filesystem: FsInfo::default(), fields: vec![], warnings: vec![], backends: vec![], unavailable: vec![], error: None }
+        FileReport {
+            schema_version: SCHEMA_VERSION.into(),
+            path: "a".into(),
+            size: 1,
+            sha256: Some("abc".into()),
+            format: FormatInfo {
+                id: "text".into(),
+                description: "".into(),
+                mime: "".into(),
+                category: Category::Text,
+                extension_match: ExtensionMatch::Match,
+                signature_hex: "".into(),
+            },
+            filesystem: FsInfo::default(),
+            fields: vec![],
+            warnings: vec![],
+            backends: vec![],
+            unavailable: vec![],
+            error: None,
+        }
     }
 }
