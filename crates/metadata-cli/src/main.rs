@@ -114,7 +114,7 @@ fn run(cli: Cli) -> Result<i32> {
 
 // ---------- shared plumbing ----------
 
-fn pick_format(ctx: &Ctx, c: Option<Fmt>, default: Fmt) -> Fmt {
+pub(crate) fn pick_format(ctx: &Ctx, c: Option<Fmt>, default: Fmt) -> Fmt {
     c.or_else(|| ctx.cfg.default_format.as_deref().and_then(Fmt::parse))
         .unwrap_or(default)
 }
