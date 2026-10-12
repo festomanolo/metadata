@@ -11,6 +11,8 @@ pub struct ScanOptions {
     pub max_depth: usize,
     pub jobs: usize,
     pub include_hidden: bool,
+    /// Directory names skipped entirely (e.g. `.git`).
+    pub exclude_dirs: Vec<String>,
 }
 
 impl Default for ScanOptions {
