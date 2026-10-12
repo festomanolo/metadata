@@ -114,7 +114,7 @@ Read [docs/ASSESSMENT.md](docs/ASSESSMENT.md) before relying on any finding.
 
 ## Known limitations
 
-* Native writing covers DOCX/XLSX/PPTX, ODT/ODS/ODP, PDF Info fields, PNG text chunks and JPEG comments/stripping only. Individual EXIF/IPTC/XMP tag edits and everything for video/audio/RAW/HEIC require ExifTool; that path builds safe arguments and verifies the result but is **not covered by automated tests against a real ExifTool**.
+* Native writing covers DOCX/XLSX/PPTX, ODT/ODS/ODP, PDF Info fields, PNG text chunks and JPEG comments/stripping only. Individual EXIF/IPTC/XMP tag edits and everything for video/audio/RAW/HEIC require ExifTool; that path builds safe arguments and verifies the result, but has only been tested against a stub script, **never against a real ExifTool**.
 * Video/audio/RAW/HEIC/legacy-Office metadata and 7z/RAR/BZ2/XZ listing are unavailable without the matching tool.
 * Assessment does not yet compare source code, documentation and screenshots for consistency (listed as *not performed* in every report).
 * The TUI's Cases and Reports tabs are placeholders pointing at the CLI; use `metadata case …`.
