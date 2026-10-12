@@ -975,7 +975,11 @@ fn rule_gaps(c: &mut Ctx, emb: &[&Event], start: &Option<DayRange>, end: &Option
         })
         .collect();
     if let Some(g) = c.i.git {
-        times.extend(g.commits.iter().filter_map(|cm| cm.author_date.sort_key().map(|k| (k, format!("git:{}", &cm.hash[..10.min(cm.hash.len())])))));
+        times.extend(g.commits.iter().filter_map(|cm| {
+            cm.author_date
+                .sort_key()
+                .map(|k| (k, format!("git:{}", &cm.hash[..10.min(cm.hash.len())])))
+        }));
     }
     if let Some(s) = start {
         times.retain(|(k, _)| *k >= s.start);
@@ -992,18 +996,36 @@ fn rule_gaps(c: &mut Ctx, emb: &[&Event], start: &Option<DayRange>, end: &Option
     let evs: Vec<Evidence> = times
         .windows(2)
         .filter(|w| w[1].0 - w[0].0 > gap)
-        .map(|w| Evidence { file: "(timeline)".into(), field: "gap".into(), value: format!("{} days between {} and {}", (w[1].0 - w[0].0) / 86_400, w[0].1, w[1].1), source: Source::Embedded })
+        .map(|w| Evidence {
+            file: "(timeline)".into(),
+            field: "gap".into(),
+            value: format!(
+                "{} days between {} and {}",
+                (w[1].0 - w[0].0) / 86_400,
+                w[0].1,
+                w[1].1
+            ),
+            source: Source::Embedded,
+        })
         .collect();
     if !evs.is_empty() {
         c.push(Draft {
             rule: "GAP-HISTORY",
-            title: format!("{} gap(s) of more than {} days in the available history", evs.len(), c.i.thresholds.gap_days),
+            title: format!(
+                "{} gap(s) of more than {} days in the available history",
+                evs.len(),
+                c.i.thresholds.gap_days
+            ),
             severity: Severity::Info,
             priority: 1,
             evidence: evs,
-            comparison_rule: "consecutive embedded/git timestamps further apart than the gap threshold".into(),
+            comparison_rule:
+                "consecutive embedded/git timestamps further apart than the gap threshold".into(),
             explanation: "No dated artefacts exist for these periods in what was submitted.".into(),
-            benign: vec!["Work in tools that leave no dated artefacts.", "Breaks in the project, holidays or exams."],
+            benign: vec![
+                "Work in tools that leave no dated artefacts.",
+                "Breaks in the project, holidays or exams.",
+            ],
             obs: Confidence::Medium,
             interp: Confidence::Low,
             follow_up: "Ask what happened during the gap if the milestone plan expected activity.",
@@ -1017,7 +1039,8 @@ fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
     }
     let old: BTreeMap<String, &FileReport> = prev.iter().map(|r| key(proot, r)).collect();
     let new: BTreeMap<String, &FileReport> = c.i.reports.iter().map(|r| key(c.i.root, r)).collect();
-    let old_hashes: std::collections::HashSet<&str> = prev.iter().filter_map(|r| r.sha256.as_deref()).collect();
+    let old_hashes: std::collections::HashSet<&str> =
+        prev.iter().filter_map(|r| r.sha256.as_deref()).collect();
     let (mut added, mut removed, mut changed, mut same) = (vec![], vec![], vec![], 0usize);
     for (p, n) in &new {
         match old.get(p) {
