@@ -1,5 +1,6 @@
 mod args;
 mod config;
+mod edit_cmd;
 mod forensic;
 mod render;
 
@@ -140,6 +141,42 @@ fn run(cli: Cli) -> Result<i32> {
                 include_personal,
                 min_severity,
             },
+            &c,
+        ),
+        Cmd::Edit {
+            paths,
+            set,
+            remove,
+            copy_from,
+            interactive,
+            w,
+            c,
+        } => edit_cmd::cmd_edit(
+            &ctx,
+            &paths,
+            edit_cmd::EditArgs {
+                set,
+                remove,
+                copy_from,
+                interactive,
+                profile: None,
+            },
+            &w,
+            &c,
+        ),
+        Cmd::Clean {
+            paths,
+            profile,
+            w,
+            c,
+        } => edit_cmd::cmd_edit(
+            &ctx,
+            &paths,
+            edit_cmd::EditArgs {
+                profile: Some(profile),
+                ..Default::default()
+            },
+            &w,
             &c,
         ),
         Cmd::Capabilities { format } => cmd_caps(&ctx, format),
@@ -817,7 +854,7 @@ fn cmd_caps(ctx: &Ctx, format: Option<Fmt>) -> Result<i32> {
                     st.dim(f.notes)
                 );
             }
-            println!("\n{}", st.dim("Write support is listed only for format/backend pairs verified by round-trip tests (none yet: metadata editing is PLANNED)."));
+            println!("\n{}", st.dim("Write support is listed only for verified format/backend pairs. exiftool* = passes through verify-after-write but is not covered by tests against a real exiftool."));
         }
     }
     Ok(0)
