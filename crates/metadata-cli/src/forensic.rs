@@ -257,6 +257,7 @@ fn csv(s: &str) -> String {
 }
 
 pub struct AssessArgs {
+    pub html: Option<PathBuf>,
     pub path: PathBuf,
     pub case: String,
     pub student: Option<String>,
@@ -298,11 +299,6 @@ pub fn cmd_assess(ctx: &Ctx, a: AssessArgs, c: &Common) -> Result<i32> {
     }
     cf.claims.validate()?;
     let th = cf.thresholds.clone().unwrap_or_default();
-    let root = root_of(&a.path);
-    let (reports, files) = scan_project(ctx, c, &root)?;
-    if ctx.cancel.load(Ordering::Relaxed) {
-        bail!("cancelled");
-    }
     let prev = match &a.previous {
         Some(p) => Some((p.clone(), scan_project(ctx, c, p)?.0)),
         None => None,
