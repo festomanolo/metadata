@@ -2,4 +2,5 @@
 pub mod assess;
 pub mod claims;
 pub mod compare;
+pub mod git;
 pub mod manifest;
