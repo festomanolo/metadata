@@ -246,7 +246,12 @@ pub fn html(i: &ReportInput) -> String {
     } else {
         o.push_str("<ul>");
         for (at, t) in i.notes {
-            let _ = write!(o, "<li><span class=\"dim\">{}</span> {}</li>", esc(at), esc(t));
+            let _ = write!(
+                o,
+                "<li><span class=\"dim\">{}</span> {}</li>",
+                esc(at),
+                esc(t)
+            );
         }
         o.push_str("</ul>");
     }
@@ -256,8 +261,16 @@ pub fn html(i: &ReportInput) -> String {
 }
 
 fn csv(s: &str) -> String {
-    let g = if s.starts_with(['=', '+', '-', '@', '\t', '\r']) { format!("'{s}") } else { s.to_string() };
-    if g.contains([',', '"', '\n', '\r']) { format!("\"{}\"", g.replace('"', "\"\"")) } else { g }
+    let g = if s.starts_with(['=', '+', '-', '@', '\t', '\r']) {
+        format!("'{s}")
+    } else {
+        s.to_string()
+    };
+    if g.contains([',', '"', '\n', '\r']) {
+        format!("\"{}\"", g.replace('"', "\"\""))
+    } else {
+        g
+    }
 }
 
 pub fn findings_csv(a: &Assessment, states: &BTreeMap<String, FindingState>) -> String {
@@ -267,7 +280,10 @@ pub fn findings_csv(a: &Assessment, states: &BTreeMap<String, FindingState>) -> 
         let _ = writeln!(
             o,
             "{},{},{},{},{},{},{},{},{},{},{}",
-            csv(&f.id), csv(&f.rule), sev_label(f.severity), f.review_priority,
+            csv(&f.id),
+            csv(&f.rule),
+            sev_label(f.severity),
+            f.review_priority,
             st.map(|s| s.status).unwrap_or(FindingStatus::Open).as_str(),
             csv(&f.files.join("; ")), csv(&f.title), csv(&f.explanation), csv(&f.follow_up),
             csv(st.and_then(|s| s.reason.as_deref()).unwrap_or("")), csv(st.and_then(|s| s.note.as_deref()).unwrap_or(""))
