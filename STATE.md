@@ -86,6 +86,10 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 - Search alias table + "format can hold" table live in `search.rs`; extend when adding fields.
 - Archive entry timestamps (ZIP DOS time) have no timezone → naive `TimeValue`.
 
-## Next steps (in order)
-1. M6: HTML/CSV report for `assess` (metadata-report crate), SQLite cases (metadata-storage).
-3. M7: benches, README/CLI ref/format matrix/safety+methodology docs, audit.
+## Next steps (open items)
+1. Run `cargo audit`; add CI (fmt, clippy, test on macOS/Linux/Windows) and test ExifTool/FFprobe paths against real binaries.
+2. Assessment: source/docs/screenshot consistency check (currently listed as not performed).
+3. 7z/RAR listing, Apache Tika adapter, OLE2 native properties, source-project dependency analysis.
+4. TUI: real Cases/Reports tabs (currently point at CLI), persist theme/settings.
+5. Fuzz targets for native parsers; release packaging; Windows terminal verification (only macOS verified).
+6. Custom-props reader in ooxml.rs ignores XML entities (minor).
