@@ -857,23 +857,50 @@ fn draw_modal(f: &mut Frame, area: Rect, app: &App, t: &Theme) {
                 ("Ctrl+C", "cancel running scan (twice when idle quits)"),
                 ("q", "quit"),
             ];
-            let mut lines: Vec<Line> = rows.iter().map(|(k, d)| Line::from(vec![Span::styled(format!("{k:<22}"), t.accent_s()), Span::raw(*d)])).collect();
+            let mut lines: Vec<Line> = rows
+                .iter()
+                .map(|(k, d)| {
+                    Line::from(vec![
+                        Span::styled(format!("{k:<22}"), t.accent_s()),
+                        Span::raw(*d),
+                    ])
+                })
+                .collect();
             lines.push(Line::from(""));
             lines.push(Line::from(Span::styled("Metadata is evidence to weigh, not proof. Timestamps shown with ?tz have no recorded timezone.", t.dim_s())));
-            f.render_widget(Paragraph::new(lines).block(panel(t, "Help — Esc to close", true)), r);
+            f.render_widget(
+                Paragraph::new(lines).block(panel(t, "Help — Esc to close", true)),
+                r,
+            );
         }
         Modal::Message(m) => {
             let r = centered(area, 60, 7);
             f.render_widget(Clear, r);
-            f.render_widget(Paragraph::new(m.as_str()).wrap(Wrap { trim: true }).block(panel(t, "Notice", true)), r);
+            f.render_widget(
+                Paragraph::new(m.as_str())
+                    .wrap(Wrap { trim: true })
+                    .block(panel(t, "Notice", true)),
+                r,
+            );
         }
         Modal::ConfirmWrite => {
             let r = centered(area, 64, 9);
             f.render_widget(Clear, r);
-            let mut lines = vec![Line::from("Write an edited COPY with these changes? The original is not modified.")];
+            let mut lines = vec![Line::from(
+                "Write an edited COPY with these changes? The original is not modified.",
+            )];
             if let Some(p) = &app.edit.plan {
-                lines.extend(p.warnings.iter().map(|w| Line::from(Span::styled(format!("! {}", clip(w, 58)), t.warn_s()))));
-                if p.signature_risk { lines.push(Line::from(Span::styled("Signed file: use the CLI with --accept-signature-loss.", t.err_s()))); }
+                lines.extend(
+                    p.warnings.iter().map(|w| {
+                        Line::from(Span::styled(format!("! {}", clip(w, 58)), t.warn_s()))
+                    }),
+                );
+                if p.signature_risk {
+                    lines.push(Line::from(Span::styled(
+                        "Signed file: use the CLI with --accept-signature-loss.",
+                        t.err_s(),
+                    )));
+                }
             }
             lines.push(Line::from(""));
             lines.push(Line::from(Span::styled("y / Enter = write     any other key = cancel", t.dim_s())));
