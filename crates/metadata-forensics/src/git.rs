@@ -67,12 +67,16 @@ pub fn read_history(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|e| MetaError::BackendFailed { backend: "git".into(), reason: e.to_string() })?;
+        .map_err(|e| MetaError::BackendFailed {
+            backend: "git".into(),
+            reason: e.to_string(),
+        })?;
     let mut stdout = child.stdout.take().unwrap();
     let mut stderr = child.stderr.take().unwrap();
     let t_out = std::thread::spawn(move || {
         let mut b = Vec::new();
-        let _ = std::io::Read::read_to_end(&mut std::io::Read::take(&mut stdout, 256 << 20), &mut b);
+        let _ =
+            std::io::Read::read_to_end(&mut std::io::Read::take(&mut stdout, 256 << 20), &mut b);
         b
     });
     let t_err = std::thread::spawn(move || {
@@ -82,13 +86,19 @@ pub fn read_history(
     });
     let start = Instant::now();
     let status = loop {
-        if let Some(s) = child.try_wait().map_err(|e| MetaError::BackendFailed { backend: "git".into(), reason: e.to_string() })? {
+        if let Some(s) = child.try_wait().map_err(|e| MetaError::BackendFailed {
+            backend: "git".into(),
+            reason: e.to_string(),
+        })? {
             break s;
         }
         if start.elapsed() > timeout {
             let _ = child.kill();
             let _ = child.wait();
-            return Err(MetaError::BackendFailed { backend: "git".into(), reason: "timed out".into() });
+            return Err(MetaError::BackendFailed {
+                backend: "git".into(),
+                reason: "timed out".into(),
+            });
         }
         std::thread::sleep(Duration::from_millis(10));
     };
