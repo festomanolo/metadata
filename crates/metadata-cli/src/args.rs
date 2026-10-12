@@ -246,6 +246,17 @@ pub enum Cmd {
         #[command(flatten)]
         c: Common,
     },
+    /// Open the interactive full-screen interface
+    Tui {
+        /// Directory or file to open [default: current directory]
+        path: Option<PathBuf>,
+        /// Do not start scanning on launch
+        #[arg(long)]
+        no_scan: bool,
+        /// Do not use exiftool/ffprobe even if installed
+        #[arg(long)]
+        no_external: bool,
+    },
     /// Show format support and which backend handles each format
     Capabilities {
         #[arg(short, long, value_enum)]
