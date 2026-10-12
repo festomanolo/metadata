@@ -825,3 +825,243 @@ fn copy_from_transfers_writable_fields_but_not_dates() {
         "dates not copied"
     );
 }
+
+fn with_db(db: &Path) -> Command {
+    let mut c = md();
+    c.env("METADATA_DB", db);
+    c
+}
+
+#[test]
+fn case_workflow_end_to_end() {
+    let d = tempfile::tempdir().unwrap();
+    let db = d.path().join("db/cases.sqlite");
+    let s1 = d.path().join("s1");
+    put(
+        &s1,
+        "thesis.docx",
+        &docx_at("2023-01-01T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
+    put(&s1, "notes.txt", b"first");
+    with_db(&db)
+        .args([
+            "case",
+            "new",
+            "stud-1",
+            "--title",
+            "Alice",
+            "--start",
+            "2024-01-10",
+            "--deadline",
+            "2024-06-01",
+            "--student",
+            "A123",
+        ])
+        .assert()
+        .success();
+    with_db(&db)
+        .args(["case", "new", "stud-1"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("already exists"));
+    with_db(&db)
+        .args([
+            "case",
+            "add",
+            "stud-1",
+            "--no-git",
+            "--no-external",
+            "--label",
+            "milestone 1",
+        ])
+        .arg(&s1)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("added submission #1"));
+    let show = json(
+        &with_db(&db)
+            .args(["case", "show", "stud-1", "-f", "json"])
+            .assert()
+            .success()
+            .get_output()
+            .stdout
+            .clone(),
+    );
+    let finding = show["submissions"][0]["findings"].as_i64().unwrap();
+    assert!(finding >= 1);
+    // find the real finding id from the report
+    let rep = json(
+        &with_db(&db)
+            .args(["case", "report", "stud-1", "-f", "json"])
+            .assert()
+            .success()
+            .get_output()
+            .stdout
+            .clone(),
+    );
+    let fid = rep["assessment"]["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["rule"] == "TS-BEFORE-START")
+        .unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // dismissal needs a reason; unknown ids are refused
+    with_db(&db)
+        .args(["case", "finding", "stud-1", &fid, "--status", "dismissed"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("reason"));
+    with_db(&db)
+        .args([
+            "case",
+            "finding",
+            "stud-1",
+            "NOPE-1234",
+            "--status",
+            "reviewed",
+        ])
+        .assert()
+        .failure();
+    with_db(&db)
+        .args([
+            "case",
+            "finding",
+            "stud-1",
+            &fid,
+            "--status",
+            "dismissed",
+            "--reason",
+            "template file",
+            "--note",
+            "asked student",
+        ])
+        .assert()
+        .success();
+    with_db(&db)
+        .args(["case", "note", "stud-1", "met on Monday"])
+        .assert()
+        .success();
+    // second submission: compared with the first; dismissed state carries over
+    let s2 = d.path().join("s2");
+    put(
+        &s2,
+        "thesis.docx",
+        &docx_at("2023-01-01T09:00:00Z", "2024-03-01T09:00:00Z"),
+    );
+    put(&s2, "notes.txt", b"second");
+    with_db(&db)
+        .args([
+            "case",
+            "add",
+            "stud-1",
+            "--no-git",
+            "--no-external",
+            "--label",
+            "final",
+        ])
+        .arg(&s2)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("compared with the previous").and(
+            predicate::str::contains("already have a reviewer disposition"),
+        ));
+    let html = d.path().join("report.html");
+    let csv = d.path().join("findings.csv");
+    with_db(&db)
+        .args(["case", "report", "stud-1", "--html"])
+        .arg(&html)
+        .arg("--csv")
+        .arg(&csv)
+        .arg("--timeline")
+        .assert()
+        .success();
+    let h = std::fs::read_to_string(&html).unwrap();
+    assert!(
+        h.contains("Executive summary")
+            && h.contains("template file")
+            && h.contains("met on Monday")
+            && h.contains("Timeline")
+    );
+    let c = std::fs::read_to_string(&csv).unwrap();
+    assert!(c.contains("dismissed"));
+    with_db(&db)
+        .args(["case", "report", "stud-1", "--html"])
+        .arg(&html)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--force"));
+    let diff = with_db(&db)
+        .args(["case", "diff", "stud-1", "1", "2"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    assert!(String::from_utf8(diff).unwrap().contains("2 changed"));
+    with_db(&db)
+        .args(["case", "list", "--search", "alice"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("stud-1"));
+    with_db(&db)
+        .args(["case", "show", "missing"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("no such case"));
+}
+
+#[test]
+fn assess_html_report_is_escaped_and_complete() {
+    let d = tempfile::tempdir().unwrap();
+    let root = d.path().join("proj");
+    put(
+        &root,
+        "<b>x</b>.docx",
+        &docx_at("2023-01-01T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
+    let out = d.path().join("r.html");
+    md().args(["assess", "--no-git", "--start", "2024-01-10", "--html"])
+        .arg(&out)
+        .arg(&root)
+        .assert()
+        .success();
+    let h = std::fs::read_to_string(&out).unwrap();
+    assert!(
+        h.starts_with("<!doctype html>")
+            && h.contains("&lt;b&gt;x&lt;/b&gt;.docx")
+            && !h.contains("<b>x</b>.docx")
+    );
+}
+
+#[test]
+fn cache_hits_on_second_run_and_invalidates_on_change() {
+    let d = tempfile::tempdir().unwrap();
+    let cfg = d.path().join("cfg/config.toml");
+    let dir = d.path().join("data");
+    put(&dir, "a.txt", b"one");
+    put(&dir, "b.txt", b"two");
+    let run = || {
+        Command::cargo_bin("metadata")
+            .unwrap()
+            .env("METADATA_CONFIG", &cfg)
+            .args(["extract", "-r", "--cache", "--no-external"])
+            .arg(&dir)
+            .assert()
+            .success()
+            .get_output()
+            .clone()
+    };
+    let first = run();
+    assert!(String::from_utf8_lossy(&first.stderr).contains("0 hit(s), 2 miss"));
+    let second = run();
+    assert!(String::from_utf8_lossy(&second.stderr).contains("2 hit(s), 0 miss"));
+    assert_eq!(
+        json(&first.stdout)["files"].as_array().unwrap().len(),
+        json(&second.stdout)["files"].as_array().unwrap().len()
+    );
+    std::fs::write(dir.join("a.txt"), b"changed").unwrap();
+    assert!(String::from_utf8_lossy(&run().stderr).contains("1 hit(s), 1 miss"));
+}
