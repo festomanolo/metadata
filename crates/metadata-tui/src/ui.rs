@@ -618,24 +618,89 @@ fn draw_edit(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
         );
     };
     let (keys, free) = app.edit_keys();
-    let [l, r] = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(a);
-    let mut items: Vec<ListItem> = keys.iter().map(|k| {
-        let cur = rep.find(k).first().map(|x| app.display_value(x)).unwrap_or_else(|| "(unset)".into());
-        let pend = app.edit.ops.iter().rev().find_map(|o| match o { metadata_edit::Op::Set(x, v) if x == k => Some(format!(" → {v}")), metadata_edit::Op::Remove(x) if x == k => Some(" → (remove)".into()), _ => None });
-        ListItem::new(Line::from(vec![Span::raw(format!("{k:<26}")), Span::styled(clip(&cur, 22), t.dim_s()), Span::styled(pend.unwrap_or_default(), t.warn_s())]))
-    }).collect();
-    if free { items.push(ListItem::new(Span::styled("+ other field…", t.accent_s()))); }
-    let title = format!("Writable fields · {} ({})", clip(&std::path::Path::new(&rep.path).file_name().unwrap_or_default().to_string_lossy(), 24), rep.format.id);
+    let [l, r] =
+        Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(a);
+    let mut items: Vec<ListItem> = keys
+        .iter()
+        .map(|k| {
+            let cur = rep
+                .find(k)
+                .first()
+                .map(|x| app.display_value(x))
+                .unwrap_or_else(|| "(unset)".into());
+            let pend = app.edit.ops.iter().rev().find_map(|o| match o {
+                metadata_edit::Op::Set(x, v) if x == k => Some(format!(" → {v}")),
+                metadata_edit::Op::Remove(x) if x == k => Some(" → (remove)".into()),
+                _ => None,
+            });
+            ListItem::new(Line::from(vec![
+                Span::raw(format!("{k:<26}")),
+                Span::styled(clip(&cur, 22), t.dim_s()),
+                Span::styled(pend.unwrap_or_default(), t.warn_s()),
+            ]))
+        })
+        .collect();
+    if free {
+        items.push(ListItem::new(Span::styled("+ other field…", t.accent_s())));
+    }
+    let title = format!(
+        "Writable fields · {} ({})",
+        clip(
+            &std::path::Path::new(&rep.path)
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy(),
+            24
+        ),
+        rep.format.id
+    );
     if items.is_empty() {
-        f.render_widget(Paragraph::new(vec![Line::from(format!("{} has no natively writable fields.", rep.format.id)), Line::from(Span::styled("Install exiftool for broader write support (see Overview).", t.dim_s()))]).block(panel(t, &title, true)), l);
+        f.render_widget(
+            Paragraph::new(vec![
+                Line::from(format!(
+                    "{} has no natively writable fields.",
+                    rep.format.id
+                )),
+                Line::from(Span::styled(
+                    "Install exiftool for broader write support (see Overview).",
+                    t.dim_s(),
+                )),
+            ])
+            .block(panel(t, &title, true)),
+            l,
+        );
     } else {
         let mut st = ListState::default().with_selected(Some(app.edit.cursor.min(items.len() - 1)));
-        f.render_stateful_widget(List::new(items).block(panel(t, &title, true)).highlight_style(t.sel_s()), l, &mut st);
+        f.render_stateful_widget(
+            List::new(items)
+                .block(panel(t, &title, true))
+                .highlight_style(t.sel_s()),
+            l,
+            &mut st,
+        );
     }
     let mut lines: Vec<Line> = vec![Line::from(Span::styled("Edits are written to a NEW copy (<name>.edited.<ext>); the original is never modified here.", t.dim_s())), Line::from("")];
-    lines.extend(app.edit.preview.iter().map(|s| Line::from(clip(s, r.width as usize - 4))));
-    if !app.edit.result.is_empty() { lines.push(Line::from("")); lines.extend(app.edit.result.iter().map(|s| Line::from(Span::styled(clip(s, r.width as usize - 4), t.ok_s())))); }
-    f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }).block(panel(t, "Preview & result", false)), r);
+    lines.extend(
+        app.edit
+            .preview
+            .iter()
+            .map(|s| Line::from(clip(s, r.width as usize - 4))),
+    );
+    if !app.edit.result.is_empty() {
+        lines.push(Line::from(""));
+        lines.extend(
+            app.edit
+                .result
+                .iter()
+                .map(|s| Line::from(Span::styled(clip(s, r.width as usize - 4), t.ok_s()))),
+        );
+    }
+    f.render_widget(
+        Paragraph::new(lines)
+            .wrap(Wrap { trim: false })
+            .block(panel(t, "Preview & result", false)),
+        r,
+    );
 }
 
 fn draw_settings(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
@@ -644,7 +709,10 @@ fn draw_settings(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
         format!("Theme                  {:?}   (T cycles)", app.theme),
         format!("Reveal personal data   {}   (r)", on(app.reveal)),
         format!("Details panel          {}   (d)", on(app.show_details)),
-        format!("External backends      {}   (set with --no-external when launching)", on(app.use_external)),
+        format!(
+            "External backends      {}   (set with --no-external when launching)",
+            on(app.use_external)
+        ),
     ];
     let list = List::new(items.into_iter().map(ListItem::new).collect::<Vec<_>>()).block(panel(t, "Settings (session only; persistent options live in `metadata config`)", true)).highlight_style(t.sel_s());
     let mut st = ListState::default().with_selected(Some(app.settings_cursor));
