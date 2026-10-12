@@ -276,3 +276,143 @@ Options:
   -h, --help             Print help
 ```
 
+## `metadata timeline`
+
+```text
+Build a chronological timeline from embedded, archive, filesystem and git sources (kept separate)
+
+Usage: metadata timeline [OPTIONS] <PATHS>...
+
+Arguments:
+  <PATHS>...  
+
+Options:
+      --source <SOURCE>      Show only these sources (repeatable): declared, embedded, archive, filesystem, git, intake
+  -v, --verbose...           Increase diagnostics on stderr (-v info, -vv debug)
+      --no-color             Disable colored output
+      --no-git               Do not read git history even if a repository is present
+      --manifest <MANIFEST>  Add the intake time recorded in a manifest created by `hash --manifest`
+      --claims <CLAIMS>      Claims file (TOML/JSON) whose dates are shown as `declared` events
+  -r, --recursive            Descend into directories
+  -f, --format <FORMAT>      Output format [default: from config, else per-command] [possible values: human, json, csv]
+  -o, --output <OUTPUT>      Write output to FILE instead of stdout (refuses to overwrite without --force)
+      --force                Allow --output to replace an existing file
+      --cache                Reuse cached extraction results keyed by file hash and settings (stored in the config dir)
+      --all                  Include raw/unknown fields and list every archive entry
+      --deep                 Inspect nested archives (bounded by archive limits)
+      --no-hash              Skip SHA-256 computation
+      --no-external          Do not use exiftool/ffprobe even if installed
+      --redact               Mask GPS and personal identifiers (author, serial numbers, ...)
+  -j, --jobs <JOBS>          Parallel workers
+      --timeout <TIMEOUT>    Per external tool timeout (seconds)
+      --exclude <DIR>        Directory name to skip while walking (repeatable)
+      --include-vcs          Include `.git` internals when walking (excluded by default)
+      --filter <TEXT>        Only show fields whose group, name or value contains TEXT
+  -h, --help                 Print help
+```
+
+## `metadata assess`
+
+```text
+Evidence-based review of a project against declared dates; produces findings, not verdicts
+
+Usage: metadata assess [OPTIONS] <PATH>
+
+Arguments:
+  <PATH>  Project folder (read-only)
+
+Options:
+      --case <CASE>                  Case identifier recorded in the report [default: unnamed]
+  -v, --verbose...                   Increase diagnostics on stderr (-v info, -vv debug)
+      --no-color                     Disable colored output
+      --student <STUDENT>            
+      --start <START>                Claimed start date (YYYY-MM-DD or RFC 3339)
+      --completion <COMPLETION>      Claimed completion date
+      --deadline <DEADLINE>          Submission deadline
+      --milestone <SPEC>             Claimed milestone `Name=DATE` or `Name=DATE:path-substring` (repeatable)
+      --claims <CLAIMS>              Claims/thresholds file (TOML or JSON); flags override it
+      --previous <PREVIOUS>          Previous submission folder to compare against
+      --no-git                       Do not read git history
+      --include-personal             Keep author names and other personal identifiers in evidence values (masked by default)
+      --html <FILE>                  Also write a printable HTML report to FILE
+      --min-severity <MIN_SEVERITY>  Hide findings below this level [default: info] [possible values: info, review, high]
+  -r, --recursive                    Descend into directories
+  -f, --format <FORMAT>              Output format [default: from config, else per-command] [possible values: human, json, csv]
+  -o, --output <OUTPUT>              Write output to FILE instead of stdout (refuses to overwrite without --force)
+      --force                        Allow --output to replace an existing file
+      --cache                        Reuse cached extraction results keyed by file hash and settings (stored in the config dir)
+      --all                          Include raw/unknown fields and list every archive entry
+      --deep                         Inspect nested archives (bounded by archive limits)
+      --no-hash                      Skip SHA-256 computation
+      --no-external                  Do not use exiftool/ffprobe even if installed
+      --redact                       Mask GPS and personal identifiers (author, serial numbers, ...)
+  -j, --jobs <JOBS>                  Parallel workers
+      --timeout <TIMEOUT>            Per external tool timeout (seconds)
+      --exclude <DIR>                Directory name to skip while walking (repeatable)
+      --include-vcs                  Include `.git` internals when walking (excluded by default)
+      --filter <TEXT>                Only show fields whose group, name or value contains TEXT
+  -h, --help                         Print help
+```
+
+## `metadata edit`
+
+```text
+Edit metadata fields safely (writes a new file unless --in-place; always re-reads and verifies)
+
+Usage: metadata edit [OPTIONS] <PATHS>...
+
+Arguments:
+  <PATHS>...  
+
+Options:
+      --set <KEY=VALUE>        Set a field: `Group:Name=value` or `Name=value` (repeatable)
+  -v, --verbose...             Increase diagnostics on stderr (-v info, -vv debug)
+      --no-color               Disable colored output
+      --remove <KEY>           Remove a field (repeatable)
+      --copy-from <FILE>       Copy every natively writable, non-date field from this file
+      --interactive            Choose fields interactively (reads commands from stdin)
+      --dry-run                Show the plan and exit without writing anything
+      --in-place               Modify the original file (a backup is kept unless --no-backup)
+      --no-backup              Skip the backup copy when using --in-place
+      --output-dir <DIR>       Directory for outputs when editing several files
+  -y, --yes                    Confirm in-place or multi-file writes without prompting
+      --accept-signature-loss  Proceed even though the file looks digitally signed (the signature will be invalidated)
+  -r, --recursive              Descend into directories
+  -f, --format <FORMAT>        Output format [default: from config, else per-command] [possible values: human, json, csv]
+  -o, --output <OUTPUT>        Write output to FILE instead of stdout (refuses to overwrite without --force)
+      --force                  Allow --output to replace an existing file
+      --cache                  Reuse cached extraction results keyed by file hash and settings (stored in the config dir)
+      --all                    Include raw/unknown fields and list every archive entry
+      --deep                   Inspect nested archives (bounded by archive limits)
+      --no-hash                Skip SHA-256 computation
+      --no-external            Do not use exiftool/ffprobe even if installed
+      --redact                 Mask GPS and personal identifiers (author, serial numbers, ...)
+  -j, --jobs <JOBS>            Parallel workers
+      --timeout <TIMEOUT>      Per external tool timeout (seconds)
+      --exclude <DIR>          Directory name to skip while walking (repeatable)
+      --include-vcs            Include `.git` internals when walking (excluded by default)
+      --filter <TEXT>          Only show fields whose group, name or value contains TEXT
+  -h, --help                   Print help
+```
+
+## `metadata clean`
+
+```text
+Remove metadata by profile (privacy | all | gps); writes a new file unless --in-place
+
+Usage: metadata clean [OPTIONS] <PATHS>...
+
+Arguments:
+  <PATHS>...  
+
+Options:
+      --profile <PROFILE>      [default: privacy] [possible values: privacy, all, gps]
+  -v, --verbose...             Increase diagnostics on stderr (-v info, -vv debug)
+      --dry-run                Show the plan and exit without writing anything
+      --no-color               Disable colored output
+      --in-place               Modify the original file (a backup is kept unless --no-backup)
+      --no-backup              Skip the backup copy when using --in-place
+      --output-dir <DIR>       Directory for outputs when editing several files
+  -y, --yes                    Confirm in-place or multi-file writes without prompting
+      --accept-signature-loss  Proceed even though the file looks digitally signed (the signature will be invalidated)
+  -r, --recursive              Descend into directories
