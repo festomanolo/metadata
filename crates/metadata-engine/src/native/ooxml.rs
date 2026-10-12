@@ -1,5 +1,5 @@
 //! OOXML (docx/xlsx/pptx), ODF (odt/ods/odp) and EPUB metadata from ZIP parts. Never executes content.
-use super::xmp;
+use super::xmp::{self, entity_char};
 use crate::{Extraction, Options};
 use metadata_core::{time, Field, Provenance};
 use quick_xml::events::Event;
@@ -47,6 +47,11 @@ fn leaves(xml: &str, attr_elems: &[&str]) -> (Pairs, Pairs) {
             Ok(Event::Text(t)) => {
                 if let Ok(s) = t.decode() {
                     text.push_str(&s);
+                }
+            }
+            Ok(Event::GeneralRef(r)) => {
+                if let Some(c) = r.decode().ok().and_then(|n| entity_char(&n)) {
+                    text.push(c);
                 }
             }
             Ok(Event::End(_)) => {
