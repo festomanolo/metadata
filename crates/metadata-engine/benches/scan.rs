@@ -47,10 +47,26 @@ fn main() {
         std::fs::create_dir_all(p.parent().unwrap()).unwrap();
         std::fs::write(p, data).unwrap();
     }
-    let files = collect_files(&[d.path().to_path_buf()], &ScanOptions { recursive: true, ..Default::default() }).files;
-    let engine = Engine::new(Options { use_external: false, ..Default::default() });
-    let cpus = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
-    println!("dataset: {} files (docx/jpg/pdf/zip/txt mix), {} logical CPUs", files.len(), cpus);
+    let files = collect_files(
+        &[d.path().to_path_buf()],
+        &ScanOptions {
+            recursive: true,
+            ..Default::default()
+        },
+    )
+    .files;
+    let engine = Engine::new(Options {
+        use_external: false,
+        ..Default::default()
+    });
+    let cpus = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1);
+    println!(
+        "dataset: {} files (docx/jpg/pdf/zip/txt mix), {} logical CPUs",
+        files.len(),
+        cpus
+    );
     for rep in 0..2 {
         let mut results = vec![];
         for jobs in [1, 2, 4, cpus.min(16)].into_iter().collect::<std::collections::BTreeSet<_>>() {
