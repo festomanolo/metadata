@@ -31,6 +31,7 @@ if [ "$read" = "1" ]; then
   exit 0
 fi
 cp "$src" "$out" || { echo "Error: cannot copy" ; exit 1; }
+echo >> "$out"
 printf '%s\n' "$tags" | while IFS= read -r l; do [ -n "$l" ] && echo "STUBTAG:$l" >> "$out"; done
 exit 0
 "#;
