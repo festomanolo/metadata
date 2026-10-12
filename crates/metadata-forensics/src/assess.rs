@@ -600,7 +600,8 @@ fn rule_ext_mismatch(c: &mut Ctx) {
 }
 
 fn skip_dup(p: &str) -> bool {
-    p.split('/').any(|c| matches!(c, ".git" | "node_modules" | "target" | "__pycache__"))
+    p.split('/')
+        .any(|c| matches!(c, ".git" | "node_modules" | "target" | "__pycache__"))
 }
 
 fn rule_duplicates(c: &mut Ctx) {
@@ -620,7 +621,15 @@ fn rule_duplicates(c: &mut Ctx) {
             title: format!("{} files have identical content", files.len()),
             severity: Severity::Info,
             priority: 1,
-            evidence: files.iter().map(|f| Evidence { file: f.clone(), field: "sha256".into(), value: h.into(), source: Source::Embedded }).collect(),
+            evidence: files
+                .iter()
+                .map(|f| Evidence {
+                    file: f.clone(),
+                    field: "sha256".into(),
+                    value: h.into(),
+                    source: Source::Embedded,
+                })
+                .collect(),
             comparison_rule: "equal SHA-256".into(),
             explanation: "These paths contain byte-identical content.".into(),
             benign: vec!["Intentional copies, backups, shared assets or build outputs."],
@@ -639,13 +648,25 @@ fn rule_missing_metadata(c: &mut Ctx) {
         let rp = rel(c.i.root, &r.path);
         let has = |names: &[&str]| names.iter().any(|n| !r.find(n).is_empty());
         match r.format.id.as_str() {
-            "docx" | "xlsx" | "pptx" | "odt" | "ods" | "odp" if !has(&["Created", "CreationDate"]) => docs.push(rp),
+            "docx" | "xlsx" | "pptx" | "odt" | "ods" | "odp"
+                if !has(&["Created", "CreationDate"]) =>
+            {
+                docs.push(rp)
+            }
             "pdf" if !has(&["CreationDate"]) => pdfs.push(rp),
-            "jpeg" | "tiff" | "heic" if !has(&["DateTimeOriginal", "DateTime", "DateTimeDigitized"]) => photos.push(rp),
+            "jpeg" | "tiff" | "heic"
+                if !has(&["DateTimeOriginal", "DateTime", "DateTimeDigitized"]) =>
+            {
+                photos.push(rp)
+            }
             _ => {}
         }
     }
-    for (label, files, field) in [("office/ODF documents", docs, "creation date"), ("PDF files", pdfs, "CreationDate"), ("photos", photos, "capture/modify date")] {
+    for (label, files, field) in [
+        ("office/ODF documents", docs, "creation date"),
+        ("PDF files", pdfs, "CreationDate"),
+        ("photos", photos, "capture/modify date"),
+    ] {
         if files.is_empty() {
             continue;
         }
@@ -665,7 +686,12 @@ fn rule_missing_metadata(c: &mut Ctx) {
     }
 }
 
-fn rule_incremental(c: &mut Ctx, start: &Option<DayRange>, deadline: &Option<DayRange>, completion: &Option<DayRange>) {
+fn rule_incremental(
+    c: &mut Ctx,
+    start: &Option<DayRange>,
+    deadline: &Option<DayRange>,
+    completion: &Option<DayRange>,
+) {
     let mut ev_list = vec![];
     for r in c.i.reports {
         let f = rel(c.i.root, &r.path);
