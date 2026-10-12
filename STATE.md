@@ -7,7 +7,7 @@ Rule: after adding/changing/removing a feature, file, public API, or dependency,
 - Backends on dev machine: exiftool NO, ffprobe NO, 7z NO, tika NO → tests use native paths only (`use_external:false`); adapters tested via JSON-parse unit tests.
 - First build is slow (~3 min); run long cargo commands with a 600000 ms timeout.
 - Check: `cargo fmt --all && cargo clippy --workspace --all-targets && cargo test --workspace` (all green; ~80 tests).
-- Last updated: 2026-10-12 — M1, M2, M4 (editing), M5 (timeline/assess) done; TUI, cases/reports, docs remain.
+- Last updated: 2026-10-12 — M1–M5 done incl. TUI; cases (SQLite), HTML reports, docs, benches remain.
 
 ## Feature status
 Legend: DONE (works + tested) · PARTIAL · PLANNED
