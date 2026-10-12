@@ -383,37 +383,119 @@ fn draw_inspect(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
         }
     );
     let Some(rep) = app.current() else {
-        f.render_widget(Paragraph::new(Span::styled("No file selected. Scan a directory from Batch Scan (3).", t.dim_s())).block(panel(t, &title, false)), r);
+        f.render_widget(
+            Paragraph::new(Span::styled(
+                "No file selected. Scan a directory from Batch Scan (3).",
+                t.dim_s(),
+            ))
+            .block(panel(t, &title, false)),
+            r,
+        );
         return;
     };
     let w = r.width as usize;
-    let items: Vec<ListItem> = rows.iter().map(|row| match row {
-        Row::Group { name, count, collapsed } => ListItem::new(Line::from(vec![Span::styled(format!("{} {name} ", if *collapsed { "▸" } else { "▾" }), t.accent_s()), Span::styled(format!("({count})"), t.dim_s())])),
-        Row::Field(i) => {
-            let fl = &rep.fields[*i];
-            let nm = clip(&fl.name, 26);
-            let mut spans = vec![Span::styled(format!("   {nm:<26} "), t.dim_s()), Span::raw(clip(&app.display_value(fl), w.saturating_sub(34)))];
-            if fl.time.as_ref().is_some_and(|x| !x.offset_known) { spans.push(Span::styled(" ?tz", t.warn_s())); }
-            ListItem::new(Line::from(spans))
-        }
-    }).collect();
-    let mut st = ListState::default().with_selected(if rows.is_empty() { None } else { Some(app.field_cursor.min(rows.len() - 1)) });
-    let list = List::new(items).block(panel(t, &title, app.focus == Focus::Fields)).highlight_style(if app.focus == Focus::Fields { t.sel_s() } else { Style::default() });
+    let items: Vec<ListItem> = rows
+        .iter()
+        .map(|row| match row {
+            Row::Group {
+                name,
+                count,
+                collapsed,
+            } => ListItem::new(Line::from(vec![
+                Span::styled(
+                    format!("{} {name} ", if *collapsed { "▸" } else { "▾" }),
+                    t.accent_s(),
+                ),
+                Span::styled(format!("({count})"), t.dim_s()),
+            ])),
+            Row::Field(i) => {
+                let fl = &rep.fields[*i];
+                let nm = clip(&fl.name, 26);
+                let mut spans = vec![
+                    Span::styled(format!("   {nm:<26} "), t.dim_s()),
+                    Span::raw(clip(&app.display_value(fl), w.saturating_sub(34))),
+                ];
+                if fl.time.as_ref().is_some_and(|x| !x.offset_known) {
+                    spans.push(Span::styled(" ?tz", t.warn_s()));
+                }
+                ListItem::new(Line::from(spans))
+            }
+        })
+        .collect();
+    let mut st = ListState::default().with_selected(if rows.is_empty() {
+        None
+    } else {
+        Some(app.field_cursor.min(rows.len() - 1))
+    });
+    let list = List::new(items)
+        .block(panel(t, &title, app.focus == Focus::Fields))
+        .highlight_style(if app.focus == Focus::Fields {
+            t.sel_s()
+        } else {
+            Style::default()
+        });
     f.render_stateful_widget(list, r, &mut st);
 }
 
 fn draw_scan(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
     let mut lines = vec![Line::from(vec![Span::styled("Target  ", t.dim_s()), Span::raw(app.root.display().to_string())]), Line::from(Span::styled("Press Enter to choose a directory. Scans are recursive, skip .git/node_modules/target, and never follow symlinks.", t.dim_s())), Line::from("")];
     if let Some(s) = &app.scan {
-        lines.push(Line::from(Span::styled(format!("Scanning… {}/{} files", s.done, s.total), t.accent_s())));
+        lines.push(Line::from(Span::styled(
+            format!("Scanning… {}/{} files", s.done, s.total),
+            t.accent_s(),
+        )));
     }
-    let problems: Vec<&metadata_core::FileReport> = app.reports.iter().filter(|r| r.error.is_some() || !r.warnings.is_empty()).collect();
-    lines.push(Line::from(Span::styled(format!("{} files with errors or warnings · {} skipped paths", problems.len(), app.skipped.len()), t.base())));
-    for (i, r) in problems.iter().enumerate().skip(app.scan_cursor.saturating_sub(3)).take(a.height.saturating_sub(8) as usize) {
-        let (mark, st) = if r.error.is_some() { ("✗", t.err_s()) } else { ("!", t.warn_s()) };
-        let msg = r.error.clone().or_else(|| r.warnings.first().map(|w| w.message.clone())).unwrap_or_default();
-        let sel = if i == app.scan_cursor { t.sel_s() } else { Style::default() };
-        lines.push(Line::from(vec![Span::styled(format!(" {mark} "), st), Span::styled(clip(&format!("{}  {}", std::path::Path::new(&r.path).file_name().unwrap_or_default().to_string_lossy(), msg), a.width as usize - 8), sel)]));
+    let problems: Vec<&metadata_core::FileReport> = app
+        .reports
+        .iter()
+        .filter(|r| r.error.is_some() || !r.warnings.is_empty())
+        .collect();
+    lines.push(Line::from(Span::styled(
+        format!(
+            "{} files with errors or warnings · {} skipped paths",
+            problems.len(),
+            app.skipped.len()
+        ),
+        t.base(),
+    )));
+    for (i, r) in problems
+        .iter()
+        .enumerate()
+        .skip(app.scan_cursor.saturating_sub(3))
+        .take(a.height.saturating_sub(8) as usize)
+    {
+        let (mark, st) = if r.error.is_some() {
+            ("✗", t.err_s())
+        } else {
+            ("!", t.warn_s())
+        };
+        let msg = r
+            .error
+            .clone()
+            .or_else(|| r.warnings.first().map(|w| w.message.clone()))
+            .unwrap_or_default();
+        let sel = if i == app.scan_cursor {
+            t.sel_s()
+        } else {
+            Style::default()
+        };
+        lines.push(Line::from(vec![
+            Span::styled(format!(" {mark} "), st),
+            Span::styled(
+                clip(
+                    &format!(
+                        "{}  {}",
+                        std::path::Path::new(&r.path)
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy(),
+                        msg
+                    ),
+                    a.width as usize - 8,
+                ),
+                sel,
+            ),
+        ]));
     }
     f.render_widget(Paragraph::new(lines).block(panel(t, "Batch Scan", true)), a);
 }
@@ -430,7 +512,11 @@ fn source_style(t: &Theme, s: Source) -> Style {
 
 fn draw_timeline(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
     let ev = app.events();
-    let title = format!("Timeline · {} events · source: {}", ev.len(), app.timeline_filter.map(|s| s.label()).unwrap_or("all"));
+    let title = format!(
+        "Timeline · {} events · source: {}",
+        ev.len(),
+        app.timeline_filter.map(|s| s.label()).unwrap_or("all")
+    );
     let w = a.width as usize;
     let items: Vec<ListItem> = ev.iter().map(|e| {
         let tz = if e.time.offset_known { ' ' } else { '?' };
