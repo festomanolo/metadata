@@ -71,14 +71,25 @@ pub enum SearchTarget {
 pub enum Modal {
     None,
     Help,
-    Search { target: SearchTarget, buf: String },
-    Input { prompt: String, buf: String, purpose: InputPurpose },
+    Search {
+        target: SearchTarget,
+        buf: String,
+    },
+    Input {
+        prompt: String,
+        buf: String,
+        purpose: InputPurpose,
+    },
     ConfirmWrite,
     Message(String),
 }
 
 pub enum Row {
-    Group { name: String, count: usize, collapsed: bool },
+    Group {
+        name: String,
+        count: usize,
+        collapsed: bool,
+    },
     Field(usize),
 }
 
@@ -109,7 +120,10 @@ pub struct Stats {
 
 impl Stats {
     pub fn compute(reports: &[FileReport]) -> Stats {
-        let mut s = Stats { files: reports.len(), ..Default::default() };
+        let mut s = Stats {
+            files: reports.len(),
+            ..Default::default()
+        };
         for r in reports {
             *s.formats.entry(r.format.id.clone()).or_default() += 1;
             s.fields += r.fields.len();
@@ -118,7 +132,11 @@ impl Stats {
                 s.errors += 1;
                 continue;
             }
-            let stored = r.fields.iter().filter(|f| f.provenance == Provenance::Stored).count();
+            let stored = r
+                .fields
+                .iter()
+                .filter(|f| f.provenance == Provenance::Stored)
+                .count();
             if stored == 0 && !matches!(r.format.id.as_str(), "binary" | "text" | "source") {
                 s.missing_metadata += 1;
             }
