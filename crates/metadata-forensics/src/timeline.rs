@@ -2,7 +2,7 @@
 use crate::claims::{parse_claim_time, Claims};
 use crate::git::GitHistory;
 use metadata_core::{FileReport, Provenance, TimeValue};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, PartialOrd, Ord)]
