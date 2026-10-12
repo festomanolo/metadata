@@ -74,7 +74,10 @@ fn exiftool_backend_writes_verifies_and_leaves_original() {
     let out = execute(&e, &src, &dest, &p, &ApplyOpts::default()).unwrap();
     assert!(out.verified);
     assert_eq!(std::fs::read(&src).unwrap(), before);
-    assert!(!d.path().join("pwned").exists(), "values are never shell-interpreted");
+    assert!(
+        !d.path().join("pwned").exists(),
+        "values are never shell-interpreted"
+    );
     assert!(!d.path().join("scratch").exists());
     let r = e.inspect(&dest);
     assert_eq!(r.find("Artist")[0].raw, "Zed; $(touch pwned)");
