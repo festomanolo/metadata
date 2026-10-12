@@ -45,7 +45,7 @@ pub struct Evidence {
     pub source: Source,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Finding {
     /// Stable across runs for the same rule + evidence (paths relative to the analysis root).
     pub id: String,
@@ -65,7 +65,7 @@ pub struct Finding {
     pub follow_up: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InventoryItem {
     pub path: String,
     pub size: u64,
