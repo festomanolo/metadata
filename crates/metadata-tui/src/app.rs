@@ -396,11 +396,17 @@ impl App {
     }
 
     pub fn field_rows(&self) -> Vec<Row> {
-        let Some(r) = self.current() else { return vec![] };
+        let Some(r) = self.current() else {
+            return vec![];
+        };
         let flt = self.field_filter.to_ascii_lowercase();
         let mut groups: Vec<(String, Vec<usize>)> = vec![];
         for (i, f) in r.fields.iter().enumerate() {
-            if !flt.is_empty() && !(f.name.to_ascii_lowercase().contains(&flt) || f.group.to_ascii_lowercase().contains(&flt) || f.raw.to_ascii_lowercase().contains(&flt)) {
+            if !flt.is_empty()
+                && !(f.name.to_ascii_lowercase().contains(&flt)
+                    || f.group.to_ascii_lowercase().contains(&flt)
+                    || f.raw.to_ascii_lowercase().contains(&flt))
+            {
                 continue;
             }
             match groups.iter_mut().find(|(g, _)| *g == f.group) {
@@ -411,7 +417,11 @@ impl App {
         let mut rows = vec![];
         for (g, idx) in groups {
             let collapsed = self.collapsed.contains(&g);
-            rows.push(Row::Group { name: g, count: idx.len(), collapsed });
+            rows.push(Row::Group {
+                name: g,
+                count: idx.len(),
+                collapsed,
+            });
             if !collapsed {
                 rows.extend(idx.into_iter().map(Row::Field));
             }
@@ -424,7 +434,12 @@ impl App {
         if let Some(s) = self.timeline_filter {
             v.retain(|e| e.source == s);
         }
-        v.sort_by(|a, b| a.time.sort_key().cmp(&b.time.sort_key()).then(a.file.cmp(&b.file)));
+        v.sort_by(|a, b| {
+            a.time
+                .sort_key()
+                .cmp(&b.time.sort_key())
+                .then(a.file.cmp(&b.file))
+        });
         v
     }
 
