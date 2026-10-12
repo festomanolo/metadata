@@ -79,13 +79,25 @@ impl Theme {
         Style::default()
     }
     pub fn dim_s(&self) -> Style {
-        if self.mono() { Style::default().add_modifier(Modifier::DIM) } else { Style::default().fg(self.dim) }
+        if self.mono() {
+            Style::default().add_modifier(Modifier::DIM)
+        } else {
+            Style::default().fg(self.dim)
+        }
     }
     pub fn accent_s(&self) -> Style {
-        if self.mono() { Style::default().add_modifier(Modifier::BOLD) } else { Style::default().fg(self.accent) }
+        if self.mono() {
+            Style::default().add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(self.accent)
+        }
     }
     pub fn warn_s(&self) -> Style {
-        if self.mono() { Style::default().add_modifier(Modifier::ITALIC) } else { Style::default().fg(self.warn) }
+        if self.mono() {
+            Style::default().add_modifier(Modifier::ITALIC)
+        } else {
+            Style::default().fg(self.warn)
+        }
     }
     pub fn err_s(&self) -> Style {
         if self.mono() { Style::default().add_modifier(Modifier::BOLD | Modifier::UNDERLINED) } else { Style::default().fg(self.err) }
