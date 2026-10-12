@@ -5,7 +5,10 @@ use metadata_testkit as kit;
 use std::time::Instant;
 
 fn main() {
-    let n: usize = std::env::var("BENCH_FILES").ok().and_then(|v| v.parse().ok()).unwrap_or(2000);
+    let n: usize = std::env::var("BENCH_FILES")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(2000);
     let d = tempfile::tempdir().unwrap();
     let docx = kit::docx(&kit::DocxSpec { creator: "A", last_modified_by: "B", created: "2024-01-01T00:00:00Z", modified: "2024-01-02T00:00:00Z", revision: 2, tracked_insertions: 5, application: "W" });
     let jpg = kit::jpeg(Some(&kit::ExifSpec { artist: Some("A"), date_time_original: Some("2023:05:01 12:00:00"), gps: Some((1.5, 2.5)), ..Default::default() }), None, 64, 64);
