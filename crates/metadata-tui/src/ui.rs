@@ -518,40 +518,104 @@ fn draw_timeline(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
         app.timeline_filter.map(|s| s.label()).unwrap_or("all")
     );
     let w = a.width as usize;
-    let items: Vec<ListItem> = ev.iter().map(|e| {
-        let tz = if e.time.offset_known { ' ' } else { '?' };
-        ListItem::new(Line::from(vec![
-            Span::raw(format!("{}{tz} ", e.time.iso)),
-            Span::styled(format!("{:<10}", e.source.label()), source_style(t, e.source)),
-            Span::raw(clip(&format!("{}  ", e.file), 30)),
-            Span::styled(clip(&e.field, w.saturating_sub(70).max(10)), t.dim_s()),
-        ]))
-    }).collect();
-    let mut st = ListState::default().with_selected(if ev.is_empty() { None } else { Some(app.timeline_scroll.min(ev.len() - 1)) });
-    f.render_stateful_widget(List::new(items).block(panel(t, &title, true)).highlight_style(t.sel_s()), a, &mut st);
+    let items: Vec<ListItem> = ev
+        .iter()
+        .map(|e| {
+            let tz = if e.time.offset_known { ' ' } else { '?' };
+            ListItem::new(Line::from(vec![
+                Span::raw(format!("{}{tz} ", e.time.iso)),
+                Span::styled(
+                    format!("{:<10}", e.source.label()),
+                    source_style(t, e.source),
+                ),
+                Span::raw(clip(&format!("{}  ", e.file), 30)),
+                Span::styled(clip(&e.field, w.saturating_sub(70).max(10)), t.dim_s()),
+            ]))
+        })
+        .collect();
+    let mut st = ListState::default().with_selected(if ev.is_empty() {
+        None
+    } else {
+        Some(app.timeline_scroll.min(ev.len() - 1))
+    });
+    f.render_stateful_widget(
+        List::new(items)
+            .block(panel(t, &title, true))
+            .highlight_style(t.sel_s()),
+        a,
+        &mut st,
+    );
 }
 
 fn draw_compare(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
     let Some(c) = &app.comparison else {
-        let p = Paragraph::new("In Inspect, press m on one file, move to another, then press c.").style(t.dim_s()).block(panel(t, "Compare", true));
+        let p = Paragraph::new("In Inspect, press m on one file, move to another, then press c.")
+            .style(t.dim_s())
+            .block(panel(t, "Compare", true));
         return f.render_widget(p, a);
     };
     let n = |s| c.count(s);
-    let title = format!("{} ↔ {} · {} changed · {} added · {} removed", clip(&c.left, 24), clip(&c.right, 24), n(DiffStatus::Changed), n(DiffStatus::Added), n(DiffStatus::Removed));
-    let rows: Vec<&metadata_forensics::compare::FieldDiff> = c.fields.iter().filter(|d| app.show_identical || d.status != DiffStatus::Identical).collect();
+    let title = format!(
+        "{} ↔ {} · {} changed · {} added · {} removed",
+        clip(&c.left, 24),
+        clip(&c.right, 24),
+        n(DiffStatus::Changed),
+        n(DiffStatus::Added),
+        n(DiffStatus::Removed)
+    );
+    let rows: Vec<&metadata_forensics::compare::FieldDiff> = c
+        .fields
+        .iter()
+        .filter(|d| app.show_identical || d.status != DiffStatus::Identical)
+        .collect();
     let w = a.width as usize;
-    let items: Vec<ListItem> = rows.iter().map(|d| {
-        let (m, st) = match d.status { DiffStatus::Changed => ("~", t.warn_s()), DiffStatus::Added => ("+", t.ok_s()), DiffStatus::Removed => ("-", t.err_s()), _ => ("=", t.dim_s()) };
-        let val = match d.status { DiffStatus::Changed => format!("{} → {}", clip(d.left.as_deref().unwrap_or(""), (w - 40) / 2), clip(d.right.as_deref().unwrap_or(""), (w - 40) / 2)), DiffStatus::Added => d.right.clone().unwrap_or_default(), _ => d.left.clone().unwrap_or_default() };
-        ListItem::new(Line::from(vec![Span::styled(format!("{m} "), st), Span::raw(format!("{:<30}", clip(&d.key, 30))), Span::styled(clip(&val, w.saturating_sub(36)), t.dim_s())]))
-    }).collect();
-    let mut st = ListState::default().with_selected(if rows.is_empty() { None } else { Some(app.compare_scroll.min(rows.len() - 1)) });
-    f.render_stateful_widget(List::new(items).block(panel(t, &title, true)).highlight_style(t.sel_s()), a, &mut st);
+    let items: Vec<ListItem> = rows
+        .iter()
+        .map(|d| {
+            let (m, st) = match d.status {
+                DiffStatus::Changed => ("~", t.warn_s()),
+                DiffStatus::Added => ("+", t.ok_s()),
+                DiffStatus::Removed => ("-", t.err_s()),
+                _ => ("=", t.dim_s()),
+            };
+            let val = match d.status {
+                DiffStatus::Changed => format!(
+                    "{} → {}",
+                    clip(d.left.as_deref().unwrap_or(""), (w - 40) / 2),
+                    clip(d.right.as_deref().unwrap_or(""), (w - 40) / 2)
+                ),
+                DiffStatus::Added => d.right.clone().unwrap_or_default(),
+                _ => d.left.clone().unwrap_or_default(),
+            };
+            ListItem::new(Line::from(vec![
+                Span::styled(format!("{m} "), st),
+                Span::raw(format!("{:<30}", clip(&d.key, 30))),
+                Span::styled(clip(&val, w.saturating_sub(36)), t.dim_s()),
+            ]))
+        })
+        .collect();
+    let mut st = ListState::default().with_selected(if rows.is_empty() {
+        None
+    } else {
+        Some(app.compare_scroll.min(rows.len() - 1))
+    });
+    f.render_stateful_widget(
+        List::new(items)
+            .block(panel(t, &title, true))
+            .highlight_style(t.sel_s()),
+        a,
+        &mut st,
+    );
 }
 
 fn draw_edit(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
     let Some(rep) = app.current() else {
-        return f.render_widget(Paragraph::new("Select a file in Inspect first, then press e.").style(t.dim_s()).block(panel(t, "Edit", true)), a);
+        return f.render_widget(
+            Paragraph::new("Select a file in Inspect first, then press e.")
+                .style(t.dim_s())
+                .block(panel(t, "Edit", true)),
+            a,
+        );
     };
     let (keys, free) = app.edit_keys();
     let [l, r] = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(a);
