@@ -779,3 +779,134 @@ fn rule_gaps(c: &mut Ctx, emb: &[&Event], start: &Option<DayRange>, end: &Option
         return;
     }
     let gap = c.i.thresholds.gap_days * 86_400;
+    let evs: Vec<Evidence> = times
+        .windows(2)
+        .filter(|w| w[1].0 - w[0].0 > gap)
+        .map(|w| Evidence { file: "(timeline)".into(), field: "gap".into(), value: format!("{} days between {} and {}", (w[1].0 - w[0].0) / 86_400, w[0].1, w[1].1), source: Source::Embedded })
+        .collect();
+    if !evs.is_empty() {
+        c.push(Draft {
+            rule: "GAP-HISTORY",
+            title: format!("{} gap(s) of more than {} days in the available history", evs.len(), c.i.thresholds.gap_days),
+            severity: Severity::Info,
+            priority: 1,
+            evidence: evs,
+            comparison_rule: "consecutive embedded/git timestamps further apart than the gap threshold".into(),
+            explanation: "No dated artefacts exist for these periods in what was submitted.".into(),
+            benign: vec!["Work in tools that leave no dated artefacts.", "Breaks in the project, holidays or exams."],
+            obs: Confidence::Medium,
+            interp: Confidence::Low,
+            follow_up: "Ask what happened during the gap if the milestone plan expected activity.",
+        });
+    }
+}
+
+fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
+    let key = |root: &Path, r: &FileReport| (rel(root, &r.path), r);
+    let old: BTreeMap<String, &FileReport> = prev.iter().map(|r| key(proot, r)).collect();
+    let new: BTreeMap<String, &FileReport> = c.i.reports.iter().map(|r| key(c.i.root, r)).collect();
+    let old_hashes: std::collections::HashSet<&str> = prev.iter().filter_map(|r| r.sha256.as_deref()).collect();
+    let (mut added, mut removed, mut changed, mut same) = (vec![], vec![], vec![], 0usize);
+    for (p, n) in &new {
+        match old.get(p) {
+            None => added.push(p.clone()),
+            Some(o) if o.sha256 == n.sha256 => same += 1,
+            Some(_) => changed.push(p.clone()),
+        }
+    }
+    for p in old.keys() {
+        if !new.contains_key(p) {
+            removed.push(p.clone());
+        }
+    }
+    let mut evid = vec![];
+    for (label, list) in [("added", &added), ("removed", &removed), ("changed", &changed)] {
+        for p in list {
+            evid.push(Evidence { file: p.clone(), field: "vs previous submission".into(), value: label.into(), source: Source::Embedded });
+        }
+    }
+    c.push(Draft {
+        rule: "SUB-DIFF",
+        title: format!("Compared with previous submission: {} added, {} removed, {} changed, {} identical", added.len(), removed.len(), changed.len(), same),
+        severity: Severity::Info,
+        priority: 1,
+        evidence: evid,
+        comparison_rule: "path-wise SHA-256 comparison".into(),
+        explanation: "Summarises how the submission evolved between the two snapshots.".into(),
+        benign: vec!["Normal project progress."],
+        obs: Confidence::High,
+        interp: Confidence::Low,
+        follow_up: "Review large rewrites against the milestone plan.",
+    });
+    // repeated assets: identical content at a different path
+    let moved: Vec<Evidence> = new
+        .iter()
+        .filter(|(p, n)| !old.contains_key(*p) && n.sha256.as_deref().is_some_and(|h| old_hashes.contains(h)))
+        .map(|(p, _)| Evidence { file: p.clone(), field: "sha256".into(), value: "identical content existed at another path previously".into(), source: Source::Embedded })
+        .collect();
+    if !moved.is_empty() {
+        c.push(Draft {
+            rule: "DUP-PREVIOUS",
+            title: format!("{} file(s) repeat content from the previous submission under new paths", moved.len()),
+            severity: Severity::Info,
+            priority: 1,
+            evidence: moved,
+            comparison_rule: "equal SHA-256 at a different relative path".into(),
+            explanation: "Assets were renamed or relocated between submissions.".into(),
+            benign: vec!["Restructuring or renaming."],
+            obs: Confidence::High,
+            interp: Confidence::Low,
+            follow_up: "None unless unexpected.",
+        });
+    }
+    // timestamp evolution for same paths
+    for (p, n) in &new {
+        let Some(o) = old.get(p) else { continue };
+        if o.sha256 == n.sha256 {
+            continue;
+        }
+        let first = |r: &FileReport, role: Role| r.fields.iter().filter(|f| f.provenance == metadata_core::Provenance::Stored && f.time.is_some() && timeline::role_of(&f.name) == role).map(|f| (f.key(), f.time.clone().unwrap())).collect::<Vec<_>>();
+        let (oc, nc) = (first(o, Role::Created), first(n, Role::Created));
+        for (k, nt) in &nc {
+            if let Some((_, ot)) = oc.iter().find(|(ok, _)| ok == k) {
+                if ot.iso != nt.iso {
+                    c.push(Draft {
+                        rule: "SUB-CREATED-CHANGED",
+                        title: "Embedded creation time differs from the previous submission of the same file".into(),
+                        severity: Severity::Review,
+                        priority: 3,
+                        evidence: vec![Evidence { file: p.clone(), field: k.clone(), value: format!("{} → {}", ot.iso, nt.iso), source: Source::Embedded }],
+                        comparison_rule: "same path, changed content, different embedded creation time".into(),
+                        explanation: "A creation time normally stays constant across saves of one document.".into(),
+                        benign: vec!["The file was re-created via 'Save As', export, conversion or copy-paste into a new document."],
+                        obs: Confidence::High,
+                        interp: Confidence::Low,
+                        follow_up: "Ask whether the document was rebuilt between submissions.",
+                    });
+                }
+            }
+        }
+        let (om, nm) = (first(o, Role::Modified), first(n, Role::Modified));
+        for (k, nt) in &nm {
+            if let Some((_, ot)) = om.iter().find(|(ok, _)| ok == k) {
+                if let (Some(a), Some(b)) = (t(ot), t(nt)) {
+                    if b.secs + tol(a.exact, b.exact, c.i.thresholds) < a.secs {
+                        c.push(Draft {
+                            rule: "SUB-MODIFIED-BACKWARDS",
+                            title: "Content changed but the embedded modification time is earlier than before".into(),
+                            severity: Severity::Review,
+                            priority: 3,
+                            evidence: vec![Evidence { file: p.clone(), field: k.clone(), value: format!("{} → {}", ot.iso, nt.iso), source: Source::Embedded }],
+                            comparison_rule: "same path, different hash, modification time decreased beyond tolerance".into(),
+                            explanation: "Newer content normally carries a later modification time.".into(),
+                            benign: vec!["Clock changes; content produced by a different tool or machine."],
+                            obs: conf_obs(a.exact, b.exact),
+                            interp: Confidence::Low,
+                            follow_up: "Compare the two versions' content and producing applications.",
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
