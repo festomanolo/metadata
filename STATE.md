@@ -7,7 +7,7 @@ Rule: after adding/changing/removing a feature, file, public API, or dependency,
 - Backends on dev machine: exiftool NO, ffprobe NO, 7z NO, tika NO → tests use native paths only (`use_external:false`); adapters tested via JSON-parse unit tests.
 - First build is slow (~3 min); run long cargo commands with a 600000 ms timeout.
 - Check: `cargo fmt --all && cargo clippy --workspace --all-targets && cargo test --workspace` (all green; ~80 tests).
-- Last updated: 2026-10-12 — M1 foundation + most of M2 + manifest/compare done.
+- Last updated: 2026-10-12 — M1, M2, M4 (editing), M5 (timeline/assess) done; TUI, cases/reports, docs remain.
 
 ## Feature status
 Legend: DONE (works + tested) · PARTIAL · PLANNED
@@ -32,7 +32,10 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 | Commands | inspect, extract, batch, search, compare (file+dir), hash, verify-manifest, capabilities, doctor, config | DONE | integration-tested |
 | Commands | timeline (sources separate; --source, --no-git, --manifest intake, --claims) | DONE | `cli/forensic.rs` |
 | Commands | assess (claims flags/file, --previous, git, redaction default, integrity re-hash, --min-severity) | DONE | JSON+human; HTML PLANNED (M6) |
-| Commands | edit, clean | PLANNED | M4 (no write support is claimed anywhere until verified) |
+| Commands | edit (--set/--remove/--copy-from/--interactive/--dry-run/--in-place/--output-dir/--yes/--accept-signature-loss), clean (--profile privacy/all/gps) | DONE | `cli/edit_cmd.rs`; new copy by default `<stem>.edited.<ext>`, in-place needs --yes + backup `.metadata-backup-<ts>`, ops log `<config dir>/operations.jsonl` |
+| Editing | Native writers: docx/xlsx/pptx core+app props, odt/ods/odp meta, PDF Info (file rewritten), PNG text chunks, JPEG comment + strip | DONE | round-trip verified in `metadata-edit/tests/edit.rs` |
+| Editing | ExifTool write backend | PARTIAL | argv built safely+unit-tested; NOT run against real exiftool; listed as `exiftool*` in capabilities |
+| Editing | JPEG/TIFF/etc. individual EXIF/IPTC/XMP tag edit, GPS-only removal | PLANNED | needs exiftool |
 | Commands | assess, cases, reports | PLANNED | M5/M6 |
 | Commands | tui | PLANNED | M3 |
 | Forensics | Evidence manifest (versioned, entries digest, verify, traversal-safe) | DONE | `forensics/manifest.rs` |
