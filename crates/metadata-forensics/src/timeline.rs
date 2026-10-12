@@ -47,7 +47,7 @@ pub enum Role {
     Other,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
     pub time: TimeValue,
     pub source: Source,
