@@ -64,6 +64,8 @@ pub fn collect_files(paths: &[PathBuf], o: &ScanOptions) -> Collected {
             .max_depth(depth)
             .follow_links(false)
             .sort_by_file_name()
+            .into_iter()
+            .filter_entry(|e| !(e.depth() > 0 && e.file_type().is_dir() && o.exclude_dirs.iter().any(|x| e.file_name().to_string_lossy() == x.as_str())))
         {
             match e {
                 Ok(e) if e.file_type().is_file() => {
