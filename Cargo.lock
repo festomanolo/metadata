@@ -1361,6 +1361,8 @@ dependencies = [
  "metadata-edit",
  "metadata-engine",
  "metadata-forensics",
+ "metadata-report",
+ "metadata-storage",
  "metadata-testkit",
  "metadata-tui",
  "predicates",
