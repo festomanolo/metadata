@@ -100,16 +100,32 @@ impl Theme {
         }
     }
     pub fn err_s(&self) -> Style {
-        if self.mono() { Style::default().add_modifier(Modifier::BOLD | Modifier::UNDERLINED) } else { Style::default().fg(self.err) }
+        if self.mono() {
+            Style::default().add_modifier(Modifier::BOLD | Modifier::UNDERLINED)
+        } else {
+            Style::default().fg(self.err)
+        }
     }
     pub fn ok_s(&self) -> Style {
-        if self.mono() { Style::default() } else { Style::default().fg(self.ok) }
+        if self.mono() {
+            Style::default()
+        } else {
+            Style::default().fg(self.ok)
+        }
     }
     pub fn border_s(&self) -> Style {
-        if self.mono() { Style::default() } else { Style::default().fg(self.border) }
+        if self.mono() {
+            Style::default()
+        } else {
+            Style::default().fg(self.border)
+        }
     }
     pub fn sel_s(&self) -> Style {
-        if self.mono() { Style::default().add_modifier(Modifier::REVERSED) } else { Style::default().bg(self.sel_bg).fg(self.sel_fg) }
+        if self.mono() {
+            Style::default().add_modifier(Modifier::REVERSED)
+        } else {
+            Style::default().bg(self.sel_bg).fg(self.sel_fg)
+        }
     }
     pub fn title_s(&self) -> Style {
         self.accent_s().add_modifier(Modifier::BOLD)
