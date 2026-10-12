@@ -1,4 +1,6 @@
 mod args;
+mod cache;
+mod case_cmd;
 mod config;
 mod edit_cmd;
 mod forensic;
@@ -123,6 +125,7 @@ fn run(cli: Cli) -> Result<i32> {
             previous,
             no_git,
             include_personal,
+            html,
             min_severity,
             c,
         } => forensic::cmd_assess(
