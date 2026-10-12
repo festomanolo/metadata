@@ -920,6 +920,7 @@ dependencies = [
  "ctrlc",
  "indicatif",
  "metadata-core",
+ "metadata-edit",
  "metadata-engine",
  "metadata-forensics",
  "metadata-testkit",
@@ -944,6 +945,22 @@ dependencies = [
  "sha2",
  "tempfile",
  "thiserror",
+]
+
+[[package]]
+name = "metadata-edit"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "flate2",
+ "lopdf",
+ "metadata-core",
+ "metadata-engine",
+ "metadata-testkit",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "zip",
 ]
 
 [[package]]
