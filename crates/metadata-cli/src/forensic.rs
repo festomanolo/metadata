@@ -79,7 +79,11 @@ fn scan_project(ctx: &Ctx, c: &Common, root: &Path) -> Result<(Vec<FileReport>, 
         eprintln!("skipped {}: {r}", p.display());
     }
     let engine = engine_for(ctx, &cc);
-    let reports = engine.inspect_many(&col.files, so.jobs, &|_, _| {});
+    let reports = if c.cache {
+        crate::cache::inspect_many_cached(&engine, &col.files, so.jobs, &|_, _| {})
+    } else {
+        engine.inspect_many(&col.files, so.jobs, &|_, _| {})
+    };
     Ok((reports, col.files))
 }
 
