@@ -91,7 +91,11 @@ fn main() {
         }
     }
     let t = Instant::now();
-    let h = Engine::new(Options { use_external: false, hash: false, ..Default::default() });
+    let h = Engine::new(Options {
+        use_external: false,
+        hash: false,
+        ..Default::default()
+    });
     let _ = h.inspect_many(&files, cpus.min(16), &|_, _| {});
     println!("without hashing ({} jobs): {:.1} ms", cpus.min(16), t.elapsed().as_secs_f64() * 1e3);
 }
