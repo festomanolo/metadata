@@ -80,12 +80,26 @@ fn created_before_start_flags_review_with_full_explanation() {
         &docx("2023-01-01T09:00:00Z", "2024-02-01T09:00:00Z"),
     );
     let r = scan(d.path());
-    let a = run(d.path(), &r, &claims("2024-01-10", "2024-06-01"), "2024-06-02T00:00:00Z");
-    let f = a.findings.iter().find(|f| f.rule == "TS-BEFORE-START").expect("finding");
+    let a = run(
+        d.path(),
+        &r,
+        &claims("2024-01-10", "2024-06-01"),
+        "2024-06-02T00:00:00Z",
+    );
+    let f = a
+        .findings
+        .iter()
+        .find(|f| f.rule == "TS-BEFORE-START")
+        .expect("finding");
     assert_eq!(f.severity, Severity::Review);
     assert_eq!(f.files, vec!["old.docx"]);
     assert!(f.evidence[0].field.contains("Created") && f.evidence[0].value.contains("2023-01-01"));
-    assert!(!f.benign_explanations.is_empty() && !f.explanation.is_empty() && !f.follow_up.is_empty() && !f.comparison_rule.is_empty());
+    assert!(
+        !f.benign_explanations.is_empty()
+            && !f.explanation.is_empty()
+            && !f.follow_up.is_empty()
+            && !f.comparison_rule.is_empty()
+    );
     assert!(f.id.starts_with("TS-BEFORE-START-"));
     let json = serde_json::to_string(&a).unwrap();
     assert!(json.contains("\"REVIEW\""));
@@ -96,20 +110,41 @@ fn created_before_start_flags_review_with_full_explanation() {
 fn within_tolerance_is_not_flagged() {
     let d = tempfile::tempdir().unwrap();
     // created 8 hours before the start of the claimed day: inside the 24h tolerance
-    put(d.path(), "a.docx", &docx("2024-01-09T16:00:00Z", "2024-02-01T09:00:00Z"));
-    let a = run(d.path(), &scan(d.path()), &claims("2024-01-10", "2024-06-01"), "2024-06-02T00:00:00Z");
+    put(
+        d.path(),
+        "a.docx",
+        &docx("2024-01-09T16:00:00Z", "2024-02-01T09:00:00Z"),
+    );
+    let a = run(
+        d.path(),
+        &scan(d.path()),
+        &claims("2024-01-10", "2024-06-01"),
+        "2024-06-02T00:00:00Z",
+    );
     assert!(!rules(&a).contains(&"TS-BEFORE-START"), "{:?}", rules(&a));
 }
 
 #[test]
 fn future_timestamp_is_high_priority_and_sorted_first() {
     let d = tempfile::tempdir().unwrap();
-    put(d.path(), "f.docx", &docx("2024-01-12T09:00:00Z", "2031-01-01T00:00:00Z"));
+    put(
+        d.path(),
+        "f.docx",
+        &docx("2024-01-12T09:00:00Z", "2031-01-01T00:00:00Z"),
+    );
     put(d.path(), "m.jpg", &kit::jpeg(None, None, 2, 2));
-    let a = run(d.path(), &scan(d.path()), &claims("2024-01-10", "2024-06-01"), "2024-06-02T00:00:00Z");
+    let a = run(
+        d.path(),
+        &scan(d.path()),
+        &claims("2024-01-10", "2024-06-01"),
+        "2024-06-02T00:00:00Z",
+    );
     assert_eq!(a.findings[0].severity, Severity::HighPriority);
     assert_eq!(a.findings[0].rule, "TS-FUTURE");
-    assert!(!rules(&a).contains(&"TS-AFTER"), "future events must not double-report");
+    assert!(
+        !rules(&a).contains(&"TS-AFTER"),
+        "future events must not double-report"
+    );
 }
 
 #[test]
