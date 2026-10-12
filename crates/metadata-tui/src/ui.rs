@@ -99,7 +99,10 @@ pub fn draw(f: &mut Frame, app: &App) {
                 )),
                 Line::from(""),
                 Line::from("Persistent cases and HTML reports are planned. Use the CLI today:"),
-                Line::from(Span::styled("  metadata assess <dir> --case ID -f json -o assessment.json", t.dim_s())),
+                Line::from(Span::styled(
+                    "  metadata assess <dir> --case ID -f json -o assessment.json",
+                    t.dim_s(),
+                )),
             ])
             .block(panel(&t, name, true));
             f.render_widget(p, main);
@@ -113,25 +116,64 @@ pub fn draw(f: &mut Frame, app: &App) {
 }
 
 fn draw_header(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
-    let mut spans = vec![Span::styled("METADATA", t.title_s()), Span::styled(format!(" {}", env!("CARGO_PKG_VERSION")), t.dim_s()), Span::styled("  │  ", t.border_s())];
+    let mut spans = vec![
+        Span::styled("METADATA", t.title_s()),
+        Span::styled(format!(" {}", env!("CARGO_PKG_VERSION")), t.dim_s()),
+        Span::styled("  │  ", t.border_s()),
+    ];
     spans.push(Span::styled("workspace ", t.dim_s()));
-    spans.push(Span::raw(clip(&app.root.display().to_string(), (a.width as usize).saturating_sub(48).max(10))));
+    spans.push(Span::raw(clip(
+        &app.root.display().to_string(),
+        (a.width as usize).saturating_sub(48).max(10),
+    )));
     spans.push(Span::styled("  │  ", t.border_s()));
     for b in &app.backend_status {
         let active = b.name == "native" || (app.use_external && b.available);
-        spans.push(Span::styled(if active { "● " } else { "○ " }, if active { t.ok_s() } else { t.dim_s() }));
-        spans.push(Span::styled(format!("{} ", b.name), if active { t.base() } else { t.dim_s() }));
+        spans.push(Span::styled(
+            if active { "● " } else { "○ " },
+            if active { t.ok_s() } else { t.dim_s() },
+        ));
+        spans.push(Span::styled(
+            format!("{} ", b.name),
+            if active { t.base() } else { t.dim_s() },
+        ));
     }
     f.render_widget(Paragraph::new(Line::from(spans)), a);
 }
 
 fn draw_tabs(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
-    let mut spans = vec![];
-    for (i, (s, label, ok)) in SECTIONS.iter().enumerate() {
-        let active = *s == app.section;
-        let text = format!(" {} {}{} ", i + 1, label, if *ok { "" } else { "·" });
-        let style = if active { t.sel_s().add_modifier(Modifier::BOLD) } else if *ok { t.base() } else { t.dim_s() };
-        spans.push(Span::styled(text, style));
+    // Progressive compaction so every section stays reachable on narrow terminals.
+    let render = |numbers: bool, short: bool| -> Vec<(bool, bool, String)> {
+        SECTIONS
+            .iter()
+            .enumerate()
+            .map(|(i, (s, label, ok))| {
+                let label = if short && *label == "Batch Scan" {
+                    "Scan"
+                } else {
+                    label
+                };
+                let n = if numbers {
+                    format!("{} ", i + 1)
+                } else {
+                    String::new()
+                };
+                (
+                    *s == app.section,
+                    *ok,
+                    format!(" {n}{label}{} ", if *ok { "" } else { "·" }),
+                )
+            })
+            .collect()
+    };
+    let width =
+        |v: &Vec<(bool, bool, String)>| v.iter().map(|x| x.2.chars().count()).sum::<usize>();
+    let mut tabs = render(true, false);
+    for (n, s) in [(true, true), (false, false), (false, true)] {
+        if width(&tabs) <= a.width as usize {
+            break;
+        }
+        tabs = render(n, s);
     }
     f.render_widget(Paragraph::new(Line::from(spans)), a);
 }
