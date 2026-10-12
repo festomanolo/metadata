@@ -22,3 +22,6 @@ M1 Foundation · M2 Extraction · M3 TUI · M4 Editing · M5 Forensics · M6 Cas
 - No ExifTool/FFprobe on dev machine → tests use native paths; adapters tested via fake-backend scripts.
 - Scope is huge → ship runnable milestones, mark unfinished items PLANNED.
 - Archive/untrusted input → strict limits, no extraction to disk by default.
+
+## Status
+See ROADMAP.md and STATE.md. Plan acceptance criteria are tracked as tests in each crate.
