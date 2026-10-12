@@ -872,7 +872,15 @@ impl App {
             .and_then(|s| std::fs::write(&out, s).map_err(|e| e.to_string()))
         {
             Ok(()) => {
-                let m = format!("Exported {}{}", out.display(), if self.reveal { "" } else { " (personal/location values redacted)" });
+                let m = format!(
+                    "Exported {}{}",
+                    out.display(),
+                    if self.reveal {
+                        ""
+                    } else {
+                        " (personal/location values redacted)"
+                    }
+                );
                 self.status = m.clone();
                 self.log(m);
             }
@@ -888,14 +896,24 @@ impl App {
                     return;
                 }
                 if let Some(key) = keys.get(self.edit.cursor) {
-                    self.modal = Modal::Input { prompt: format!("New value for {key}"), buf: String::new(), purpose: InputPurpose::EditValue(key.clone()) };
+                    self.modal = Modal::Input {
+                        prompt: format!("New value for {key}"),
+                        buf: String::new(),
+                        purpose: InputPurpose::EditValue(key.clone()),
+                    };
                 } else if free {
-                    self.modal = Modal::Input { prompt: "Field name (Group:Name or PNG keyword)".into(), buf: String::new(), purpose: InputPurpose::EditKey };
+                    self.modal = Modal::Input {
+                        prompt: "Field name (Group:Name or PNG keyword)".into(),
+                        buf: String::new(),
+                        purpose: InputPurpose::EditKey,
+                    };
                 }
             }
             KeyCode::Char('x') => {
                 if let Some(key) = keys.get(self.edit.cursor).cloned() {
-                    self.edit.ops.retain(|o| !matches!(o, Op::Set(x, _) | Op::Remove(x) if *x == key));
+                    self.edit
+                        .ops
+                        .retain(|o| !matches!(o, Op::Set(x, _) | Op::Remove(x) if *x == key));
                     self.edit.ops.push(Op::Remove(key.clone()));
                     self.edit.plan = None;
                     self.status = format!("Queued removal of {key}.");
@@ -924,7 +942,14 @@ impl App {
             return;
         }
         let engine = self.engine(None);
-        match plan(&engine, &src, &EditRequest { ops: self.edit.ops.clone(), profile: None }) {
+        match plan(
+            &engine,
+            &src,
+            &EditRequest {
+                ops: self.edit.ops.clone(),
+                profile: None,
+            },
+        ) {
             Ok(p) => {
                 let mut lines = vec![format!("{} · backend {}", p.format, p.backend)];
                 for c in &p.changes {
