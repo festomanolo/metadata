@@ -695,22 +695,54 @@ fn rule_incremental(
     let mut ev_list = vec![];
     for r in c.i.reports {
         let f = rel(c.i.root, &r.path);
-        let num = |n: &str| r.find(n).first().and_then(|x| x.raw.parse::<u64>().ok()).unwrap_or(0);
-        let (rev, tracked) = (num("Revision"), num("TrackedInsertions") + num("TrackedDeletions"));
-        let pdf_rev = if r.format.id == "pdf" { num("Revisions") } else { 0 };
+        let num = |n: &str| {
+            r.find(n)
+                .first()
+                .and_then(|x| x.raw.parse::<u64>().ok())
+                .unwrap_or(0)
+        };
+        let (rev, tracked) = (
+            num("Revision"),
+            num("TrackedInsertions") + num("TrackedDeletions"),
+        );
+        let pdf_rev = if r.format.id == "pdf" {
+            num("Revisions")
+        } else {
+            0
+        };
         if rev > 1 {
-            ev_list.push(Evidence { file: f.clone(), field: "OOXML-Core:Revision".into(), value: rev.to_string(), source: Source::Embedded });
+            ev_list.push(Evidence {
+                file: f.clone(),
+                field: "OOXML-Core:Revision".into(),
+                value: rev.to_string(),
+                source: Source::Embedded,
+            });
         }
         if tracked > 0 {
-            ev_list.push(Evidence { file: f.clone(), field: "Document:TrackedChanges".into(), value: tracked.to_string(), source: Source::Embedded });
+            ev_list.push(Evidence {
+                file: f.clone(),
+                field: "Document:TrackedChanges".into(),
+                value: tracked.to_string(),
+                source: Source::Embedded,
+            });
         }
         if pdf_rev > 1 {
-            ev_list.push(Evidence { file: f, field: "PDF:Revisions".into(), value: pdf_rev.to_string(), source: Source::Embedded });
+            ev_list.push(Evidence {
+                file: f,
+                field: "PDF:Revisions".into(),
+                value: pdf_rev.to_string(),
+                source: Source::Embedded,
+            });
         }
     }
     let git_n = c.i.git.map(|g| g.commits.len()).unwrap_or(0);
     if git_n > 1 {
-        ev_list.push(Evidence { file: "(git)".into(), field: "commits".into(), value: git_n.to_string(), source: Source::Git });
+        ev_list.push(Evidence {
+            file: "(git)".into(),
+            field: "commits".into(),
+            value: git_n.to_string(),
+            source: Source::Git,
+        });
     }
     if !ev_list.is_empty() {
         c.push(Draft {
@@ -745,7 +777,13 @@ fn rule_incremental(
     }
 }
 
-fn rule_git(c: &mut Ctx, g: &GitHistory, start: &Option<DayRange>, deadline: &Option<DayRange>, now: &Option<T>) {
+fn rule_git(
+    c: &mut Ctx,
+    g: &GitHistory,
+    start: &Option<DayRange>,
+    deadline: &Option<DayRange>,
+    now: &Option<T>,
+) {
     if g.commits.is_empty() {
         return;
     }
