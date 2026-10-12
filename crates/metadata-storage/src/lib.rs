@@ -135,8 +135,12 @@ impl Store {
 
     pub fn list_cases(&self, search: Option<&str>) -> Result<Vec<CaseRow>> {
         let like = format!("%{}%", search.unwrap_or(""));
-        let mut st = db(self.conn.prepare("SELECT id FROM cases WHERE id LIKE ?1 OR title LIKE ?1 ORDER BY created_at DESC, id"))?;
-        let ids: Vec<String> = db(st.query_map([like], |r| r.get(0)))?.filter_map(|x| x.ok()).collect();
+        let mut st = db(self.conn.prepare(
+            "SELECT id FROM cases WHERE id LIKE ?1 OR title LIKE ?1 ORDER BY created_at DESC, id",
+        ))?;
+        let ids: Vec<String> = db(st.query_map([like], |r| r.get(0)))?
+            .filter_map(|x| x.ok())
+            .collect();
         let mut out = vec![];
         for id in ids {
             if let Some(c) = self.get_case(&id)? {
@@ -147,13 +151,26 @@ impl Store {
     }
 
     pub fn update_claims(&self, id: &str, claims: &Claims) -> Result<()> {
-        let n = db(self.conn.execute("UPDATE cases SET claims_json = ?2 WHERE id = ?1", params![id, js(claims)?]))?;
-        if n == 0 { Err(MetaError::InvalidArgument(format!("no such case '{id}'"))) } else { Ok(()) }
+        let n = db(self.conn.execute(
+            "UPDATE cases SET claims_json = ?2 WHERE id = ?1",
+            params![id, js(claims)?],
+        ))?;
+        if n == 0 {
+            Err(MetaError::InvalidArgument(format!("no such case '{id}'")))
+        } else {
+            Ok(())
+        }
     }
 
     // ---------- submissions ----------
 
-    pub fn add_submission(&self, case: &str, label: &str, a: &Assessment, reports: &[FileReport]) -> Result<i64> {
+    pub fn add_submission(
+        &self,
+        case: &str,
+        label: &str,
+        a: &Assessment,
+        reports: &[FileReport],
+    ) -> Result<i64> {
         if self.get_case(case)?.is_none() {
             return Err(MetaError::InvalidArgument(format!("no such case '{case}'")));
         }
@@ -166,7 +183,16 @@ impl Store {
 
     pub fn submissions(&self, case: &str) -> Result<Vec<SubmissionRow>> {
         let mut st = db(self.conn.prepare("SELECT id, case_id, label, root, ingested_at, assessment_json FROM submissions WHERE case_id = ?1 ORDER BY id"))?;
-        let rows = db(st.query_map([case], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?, r.get::<_, String>(3)?, r.get::<_, String>(4)?, r.get::<_, String>(5)?))))?;
+        let rows = db(st.query_map([case], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, String>(3)?,
+                r.get::<_, String>(4)?,
+                r.get::<_, String>(5)?,
+            ))
+        }))?;
         let mut out = vec![];
         for r in rows {
             let (id, case_id, label, root, ingested_at, aj) = db(r)?;
