@@ -388,3 +388,134 @@ fn rule_after(c: &mut Ctx, emb: &[&Event], d: &DayRange, label: &str, now: &Opti
             let (rule, title) = if media {
                 ("TS-MEDIA-AFTER", format!("Media container timestamp is later than the {label}"))
             } else {
+                ("TS-AFTER", format!("Embedded timestamp is later than the {label}"))
+            };
+            c.push(Draft {
+                rule,
+                title,
+                severity: Severity::Review,
+                priority: if label == "deadline" { 4 } else { 3 },
+                evidence: vec![ev(e)],
+                comparison_rule: format!("embedded timestamp - {}h tolerance > {label}", c.i.thresholds.tolerance_hours),
+                explanation: format!("The file's metadata records a time after the {label}."),
+                benign: [&STD_BENIGN_TIME[..], &["The file may have been opened, re-exported or copied after submission preparation.", "Container timestamps record encoding time, not necessarily the time of the recorded event."]].concat(),
+                obs: conf_obs(x.exact, claim_exact(d)),
+                interp: Confidence::Low,
+                follow_up: "Compare with the submission receipt/intake time and ask how the file was exported.",
+            });
+        }
+    }
+}
+
+fn rule_modified_before_created(c: &mut Ctx, emb: &[&Event]) {
+    let mut by: BTreeMap<(&str, &str), (Vec<&Event>, Vec<&Event>)> = BTreeMap::new();
+    for e in emb {
+        let group = e.field.split(':').next().unwrap_or("");
+        let slot = by.entry((e.file.as_str(), group)).or_default();
+        match e.role {
+            Role::Created => slot.0.push(e),
+            Role::Modified => slot.1.push(e),
+            Role::Other => {}
+        }
+    }
+    for ((_, _), (cr, md)) in by {
+        let (Some(created), Some(modified)) = (cr.iter().min_by_key(|e| e.time.sort_key()), md.iter().max_by_key(|e| e.time.sort_key())) else { continue };
+        let (Some(a), Some(b)) = (t(&created.time), t(&modified.time)) else { continue };
+        if b.secs + tol(a.exact, b.exact, c.i.thresholds) < a.secs {
+            c.push(Draft {
+                rule: "TS-MOD-BEFORE-CREATE",
+                title: "Modification time is earlier than creation time within the same file".into(),
+                severity: Severity::Review,
+                priority: 2,
+                evidence: vec![ev(created), ev(modified)],
+                comparison_rule: "max(modified) + tolerance < min(created) within one metadata group".into(),
+                explanation: "A document normally cannot be last modified before it was created.".into(),
+                benign: vec!["Clock changes between saves.", "Metadata copied from another file or template.", "Timezone differences between fields."],
+                obs: conf_obs(a.exact, b.exact),
+                interp: Confidence::Low,
+                follow_up: "Inspect the whole metadata block; check whether the file was produced by a conversion tool.",
+            });
+        }
+    }
+}
+
+fn rule_milestone(c: &mut Ctx, emb: &[&Event], name: &str, m: &DayRange, filt: Option<&str>) {
+    for e in emb.iter().filter(|e| e.role == Role::Created) {
+        if filt.is_some_and(|f| !e.file.to_lowercase().contains(&f.to_lowercase())) {
+            continue;
+        }
+        let Some(x) = t(&e.time) else { continue };
+        if x.secs - tol(x.exact, claim_exact(m), c.i.thresholds) > m.end {
+            c.push(Draft {
+                rule: "MS-LATE-CREATION",
+                title: format!("File created after milestone “{name}”"),
+                severity: Severity::Review,
+                priority: 3,
+                evidence: vec![ev(e)],
+                comparison_rule: format!("embedded creation time - tolerance > milestone “{name}” date"),
+                explanation: "The file is expected to belong to this milestone, but its embedded creation time is later.".into(),
+                benign: [&STD_BENIGN_TIME[..], &["The file may be a later re-creation (e.g. re-exported or rebuilt) of earlier work."]].concat(),
+                obs: conf_obs(x.exact, claim_exact(m)),
+                interp: Confidence::Low,
+                follow_up: "Compare with the milestone submission, if one exists, and ask about the file's history.",
+            });
+        }
+    }
+}
+
+fn rule_uniform(c: &mut Ctx, events: &[Event]) {
+    let min = c.i.thresholds.uniform_min_files;
+    let hash_of = |file: &str| cat_of(c.i.reports, c.i.root, file).and_then(|r| r.sha256.clone()).unwrap_or_default();
+    for (source, rule, role, title, sev, prio) in [
+        (Source::Filesystem, "UNI-FS", Role::Modified, "Many different files share one filesystem modification time", Severity::Info, 1),
+        (Source::Embedded, "UNI-EMBEDDED", Role::Created, "Many different files share one embedded creation time", Severity::Review, 2),
+    ] {
+        let mut groups: BTreeMap<&str, Vec<&Event>> = BTreeMap::new();
+        for e in events.iter().filter(|e| e.source == source && e.role == role) {
+            groups.entry(e.time.iso.as_str()).or_default().push(e);
+        }
+        for (iso, evs) in groups {
+            let mut hashes: Vec<String> = evs.iter().map(|e| hash_of(&e.file)).collect();
+            hashes.sort();
+            hashes.dedup();
+            let mut files: Vec<&str> = evs.iter().map(|e| e.file.as_str()).collect();
+            files.sort();
+            files.dedup();
+            if hashes.len() >= min && files.len() >= min {
+                c.push(Draft {
+                    rule,
+                    title: title.into(),
+                    severity: sev,
+                    priority: prio,
+                    evidence: evs.iter().map(|e| ev(e)).collect(),
+                    comparison_rule: format!("≥{min} files with different content and identical timestamp ({iso})"),
+                    explanation: format!("{} distinct files carry exactly the same timestamp, so it describes a bulk operation rather than separate authoring events.", files.len()),
+                    benign: vec!["Extracting an archive, cloning a repository, copying a folder or syncing cloud storage assigns one time to many files.", "Documents generated from one template or export share a creation time."],
+                    obs: Confidence::High,
+                    interp: Confidence::Low,
+                    follow_up: "Treat the timestamp as the time of that bulk operation and look at embedded or git evidence instead.",
+                });
+            }
+        }
+    }
+}
+
+fn rule_ext_mismatch(c: &mut Ctx) {
+    for r in c.i.reports.iter().filter(|r| r.format.extension_match == ExtensionMatch::Mismatch) {
+        let file = rel(c.i.root, &r.path);
+        c.push(Draft {
+            rule: "FMT-EXT-MISMATCH",
+            title: "File extension does not match detected content".into(),
+            severity: Severity::Review,
+            priority: 3,
+            evidence: vec![Evidence { file, field: "format".into(), value: format!("detected {} ({})", r.format.id, r.format.mime), source: Source::Embedded }],
+            comparison_rule: "content signature vs file extension".into(),
+            explanation: "The leading bytes identify a different format than the extension suggests.".into(),
+            benign: vec!["Renamed files, mis-saved exports, or archives/containers with custom extensions (e.g. .jar, .apk) are common."],
+            obs: Confidence::High,
+            interp: Confidence::Low,
+            follow_up: "Open the file with the tool matching its real format.",
+        });
+    }
+}
+
