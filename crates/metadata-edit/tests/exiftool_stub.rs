@@ -96,7 +96,11 @@ fn exiftool_failure_surfaces_and_original_survives() {
     let d = tempfile::tempdir().unwrap();
     let (mut e, exe) = stub_engine(d.path());
     // a stub that always fails on write
-    std::fs::write(&exe, "#!/bin/sh\ncase \"$1\" in -ver) echo 1.0; exit 0;; esac\necho 'Error: boom'\nexit 1\n").unwrap();
+    std::fs::write(
+        &exe,
+        "#!/bin/sh\ncase \"$1\" in -ver) echo 1.0; exit 0;; esac\necho 'Error: boom'\nexit 1\n",
+    )
+    .unwrap();
     e.backends.exiftool = Some((exe, "1.0".into()));
     let src = d.path().join("a.jpg");
     std::fs::write(&src, kit::jpeg(None, None, 4, 4)).unwrap();
