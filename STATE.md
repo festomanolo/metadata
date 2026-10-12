@@ -37,7 +37,7 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 | Editing | ExifTool write backend | PARTIAL | argv built safely+unit-tested; NOT run against real exiftool; listed as `exiftool*` in capabilities |
 | Editing | JPEG/TIFF/etc. individual EXIF/IPTC/XMP tag edit, GPS-only removal | PLANNED | needs exiftool |
 | Commands | assess, cases, reports | PLANNED | M5/M6 |
-| Commands | tui | PLANNED | M3 |
+| Commands | tui [PATH] [--no-scan] [--no-external] | DONE | needs a TTY (errors otherwise); pty smoke-tested |
 | Forensics | Evidence manifest (versioned, entries digest, verify, traversal-safe) | DONE | `forensics/manifest.rs` |
 | Forensics | Field-level compare | DONE | `forensics/compare.rs` |
 | Forensics | Timeline, git history reader, project summary, assessment rules | DONE | `forensics/{timeline,git,project,claims,assess}.rs`; rules: TS-FUTURE, TS-BEFORE-START, TS-AFTER, TS-MEDIA-AFTER, TS-MOD-BEFORE-CREATE, MS-LATE-CREATION, UNI-FS, UNI-EMBEDDED, FMT-EXT-MISMATCH, DUP-CONTENT, MISS-METADATA, INC-PRESENT/ABSENT, GIT-{BEFORE-START,LATE-START,AFTER-DEADLINE,FUTURE,NONMONOTONIC,AUTHOR-COMMIT-SKEW}, GAP-HISTORY, SUB-DIFF, DUP-PREVIOUS, SUB-CREATED-CHANGED, SUB-MODIFIED-BACKWARDS |
