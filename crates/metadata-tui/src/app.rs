@@ -585,13 +585,20 @@ impl App {
                 if k.is_empty() {
                     return;
                 }
-                self.modal = Modal::Input { prompt: format!("New value for {k}"), buf: String::new(), purpose: InputPurpose::EditValue(k) };
+                self.modal = Modal::Input {
+                    prompt: format!("New value for {k}"),
+                    buf: String::new(),
+                    purpose: InputPurpose::EditValue(k),
+                };
             }
             InputPurpose::EditValue(k) => {
-                self.edit.ops.retain(|o| !matches!(o, Op::Set(x, _) | Op::Remove(x) if *x == k));
+                self.edit
+                    .ops
+                    .retain(|o| !matches!(o, Op::Set(x, _) | Op::Remove(x) if *x == k));
                 self.edit.ops.push(Op::Set(k.clone(), text));
                 self.edit.plan = None;
-                self.status = format!("Queued change to {k}. Press p to preview, w to write a copy.");
+                self.status =
+                    format!("Queued change to {k}. Press p to preview, w to write a copy.");
             }
         }
     }
@@ -619,7 +626,11 @@ impl App {
                 }
             },
             Section::Scan => {
-                let n = self.reports.iter().filter(|r| r.error.is_some() || !r.warnings.is_empty()).count();
+                let n = self
+                    .reports
+                    .iter()
+                    .filter(|r| r.error.is_some() || !r.warnings.is_empty())
+                    .count();
                 Self::move_cursor(&mut self.scan_cursor, n, delta);
             }
             Section::Timeline => {
@@ -627,7 +638,11 @@ impl App {
                 Self::move_cursor(&mut self.timeline_scroll, n, delta);
             }
             Section::Compare => {
-                let n = self.comparison.as_ref().map(|c| c.fields.len()).unwrap_or(0);
+                let n = self
+                    .comparison
+                    .as_ref()
+                    .map(|c| c.fields.len())
+                    .unwrap_or(0);
                 Self::move_cursor(&mut self.compare_scroll, n, delta);
             }
             Section::Edit => {
