@@ -1055,14 +1055,29 @@ fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
         }
     }
     let mut evid = vec![];
-    for (label, list) in [("added", &added), ("removed", &removed), ("changed", &changed)] {
+    for (label, list) in [
+        ("added", &added),
+        ("removed", &removed),
+        ("changed", &changed),
+    ] {
         for p in list {
-            evid.push(Evidence { file: p.clone(), field: "vs previous submission".into(), value: label.into(), source: Source::Embedded });
+            evid.push(Evidence {
+                file: p.clone(),
+                field: "vs previous submission".into(),
+                value: label.into(),
+                source: Source::Embedded,
+            });
         }
     }
     c.push(Draft {
         rule: "SUB-DIFF",
-        title: format!("Compared with previous submission: {} added, {} removed, {} changed, {} identical", added.len(), removed.len(), changed.len(), same),
+        title: format!(
+            "Compared with previous submission: {} added, {} removed, {} changed, {} identical",
+            added.len(),
+            removed.len(),
+            changed.len(),
+            same
+        ),
         severity: Severity::Info,
         priority: 1,
         evidence: evid,
@@ -1076,13 +1091,23 @@ fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
     // repeated assets: identical content at a different path
     let moved: Vec<Evidence> = new
         .iter()
-        .filter(|(p, n)| !old.contains_key(*p) && n.sha256.as_deref().is_some_and(|h| old_hashes.contains(h)))
-        .map(|(p, _)| Evidence { file: p.clone(), field: "sha256".into(), value: "identical content existed at another path previously".into(), source: Source::Embedded })
+        .filter(|(p, n)| {
+            !old.contains_key(*p) && n.sha256.as_deref().is_some_and(|h| old_hashes.contains(h))
+        })
+        .map(|(p, _)| Evidence {
+            file: p.clone(),
+            field: "sha256".into(),
+            value: "identical content existed at another path previously".into(),
+            source: Source::Embedded,
+        })
         .collect();
     if !moved.is_empty() {
         c.push(Draft {
             rule: "DUP-PREVIOUS",
-            title: format!("{} file(s) repeat content from the previous submission under new paths", moved.len()),
+            title: format!(
+                "{} file(s) repeat content from the previous submission under new paths",
+                moved.len()
+            ),
             severity: Severity::Info,
             priority: 1,
             evidence: moved,
@@ -1100,7 +1125,17 @@ fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
         if o.sha256 == n.sha256 {
             continue;
         }
-        let first = |r: &FileReport, role: Role| r.fields.iter().filter(|f| f.provenance == metadata_core::Provenance::Stored && f.time.is_some() && timeline::role_of(&f.name) == role).map(|f| (f.key(), f.time.clone().unwrap())).collect::<Vec<_>>();
+        let first = |r: &FileReport, role: Role| {
+            r.fields
+                .iter()
+                .filter(|f| {
+                    f.provenance == metadata_core::Provenance::Stored
+                        && f.time.is_some()
+                        && timeline::role_of(&f.name) == role
+                })
+                .map(|f| (f.key(), f.time.clone().unwrap()))
+                .collect::<Vec<_>>()
+        };
         let (oc, nc) = (first(o, Role::Created), first(n, Role::Created));
         for (k, nt) in &nc {
             if let Some((_, ot)) = oc.iter().find(|(ok, _)| ok == k) {
