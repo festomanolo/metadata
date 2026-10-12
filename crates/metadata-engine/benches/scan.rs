@@ -69,7 +69,10 @@ fn main() {
     );
     for rep in 0..2 {
         let mut results = vec![];
-        for jobs in [1, 2, 4, cpus.min(16)].into_iter().collect::<std::collections::BTreeSet<_>>() {
+        for jobs in [1, 2, 4, cpus.min(16)]
+            .into_iter()
+            .collect::<std::collections::BTreeSet<_>>()
+        {
             let t = Instant::now();
             let r = engine.inspect_many(&files, jobs, &|_, _| {});
             let el = t.elapsed();
