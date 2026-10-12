@@ -252,6 +252,14 @@ pub enum Cmd {
         #[command(flatten)]
         c: Common,
     },
+    /// Persistent assessment cases: submissions, reviewer decisions, notes and reports
+    Case {
+        /// Case database [default: <config dir>/cases.sqlite]
+        #[arg(long, global = true, env = "METADATA_DB")]
+        db: Option<PathBuf>,
+        #[command(subcommand)]
+        cmd: CaseCmd,
+    },
     /// Open the interactive full-screen interface
     Tui {
         /// Directory or file to open [default: current directory]
@@ -305,4 +313,90 @@ pub struct WriteOpts {
     /// Proceed even though the file looks digitally signed (the signature will be invalidated)
     #[arg(long)]
     pub accept_signature_loss: bool,
+}
+
+#[derive(Subcommand)]
+pub enum CaseCmd {
+    /// Create a case with declared dates
+    New {
+        id: String,
+        #[arg(long, default_value = "")]
+        title: String,
+        #[arg(long)]
+        student: Option<String>,
+        #[arg(long)]
+        start: Option<String>,
+        #[arg(long)]
+        completion: Option<String>,
+        #[arg(long)]
+        deadline: Option<String>,
+        #[arg(long, value_name = "SPEC")]
+        milestone: Vec<String>,
+        #[arg(long)]
+        claims: Option<PathBuf>,
+    },
+    /// List or search cases
+    List {
+        #[arg(long)]
+        search: Option<String>,
+        #[arg(short, long, value_enum)]
+        format: Option<Fmt>,
+    },
+    /// Show a case: claims, submissions and finding dispositions
+    Show {
+        id: String,
+        #[arg(short, long, value_enum)]
+        format: Option<Fmt>,
+    },
+    /// Ingest a submission folder: assess it against the case claims and the previous submission
+    Add {
+        id: String,
+        path: PathBuf,
+        #[arg(long, default_value = "")]
+        label: String,
+        #[arg(long)]
+        no_git: bool,
+        #[arg(long)]
+        include_personal: bool,
+        #[command(flatten)]
+        c: Common,
+    },
+    /// Set a finding's disposition (open | reviewed | dismissed; dismissal needs --reason)
+    Finding {
+        id: String,
+        finding_id: String,
+        #[arg(long, value_parser = ["open", "reviewed", "dismissed"])]
+        status: String,
+        #[arg(long)]
+        note: Option<String>,
+        #[arg(long)]
+        reason: Option<String>,
+    },
+    /// Add a free-text reviewer note
+    Note { id: String, text: String },
+    /// Export a report for a submission (default: latest)
+    Report {
+        id: String,
+        #[arg(long)]
+        submission: Option<i64>,
+        #[arg(long, value_name = "FILE")]
+        html: Option<PathBuf>,
+        #[arg(long, value_name = "FILE")]
+        csv: Option<PathBuf>,
+        /// Include the per-file timeline in the HTML report
+        #[arg(long)]
+        timeline: bool,
+        #[arg(long)]
+        force: bool,
+        #[arg(short, long, value_enum)]
+        format: Option<Fmt>,
+    },
+    /// Compare two submissions of a case file by file
+    Diff {
+        id: String,
+        a: i64,
+        b: i64,
+        #[arg(short, long, value_enum)]
+        format: Option<Fmt>,
+    },
 }
