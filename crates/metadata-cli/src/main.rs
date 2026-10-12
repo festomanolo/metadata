@@ -1,5 +1,6 @@
 mod args;
 mod config;
+mod forensic;
 mod render;
 
 use anyhow::{bail, Context, Result};
