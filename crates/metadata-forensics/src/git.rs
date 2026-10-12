@@ -2,7 +2,6 @@
 //! clock and can be rewritten (amend, rebase, GIT_COMMITTER_DATE): never independent evidence.
 use metadata_core::{time, MetaError, Result, TimeValue};
 use serde::Serialize;
-use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
