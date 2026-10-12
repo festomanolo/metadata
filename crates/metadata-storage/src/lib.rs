@@ -318,12 +318,22 @@ impl Store {
     // ---------- metadata cache (keyed by content hash + extraction configuration) ----------
 
     pub fn cache_get(&self, sha256: &str, config_key: &str) -> Option<FileReport> {
-        let s: String = self.conn.query_row("SELECT report_json FROM cache WHERE sha256 = ?1 AND config_key = ?2", params![sha256, config_key], |r| r.get(0)).ok()?;
+        let s: String = self
+            .conn
+            .query_row(
+                "SELECT report_json FROM cache WHERE sha256 = ?1 AND config_key = ?2",
+                params![sha256, config_key],
+                |r| r.get(0),
+            )
+            .ok()?;
         serde_json::from_str(&s).ok()
     }
 
     pub fn cache_put(&self, sha256: &str, config_key: &str, r: &FileReport) -> Result<()> {
-        db(self.conn.execute("INSERT OR REPLACE INTO cache (sha256, config_key, report_json) VALUES (?1,?2,?3)", params![sha256, config_key, js(r)?]))?;
+        db(self.conn.execute(
+            "INSERT OR REPLACE INTO cache (sha256, config_key, report_json) VALUES (?1,?2,?3)",
+            params![sha256, config_key, js(r)?],
+        ))?;
         Ok(())
     }
 
@@ -332,7 +342,9 @@ impl Store {
     }
 
     pub fn schema_version(&self) -> i32 {
-        self.conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap_or(0)
+        self.conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap_or(0)
     }
 }
 
@@ -345,7 +357,22 @@ mod tests {
 
     fn empty_assessment(case: &str) -> Assessment {
         let c = Claims::default();
-        assess(&Input { case_id: case, root: Path::new("/x"), reports: &[], claims: &c, thresholds: &Thresholds::default(), git: None, previous: None, project: ProjectSummary::default(), now: metadata_core::TimeValue::naive(chrono::NaiveDate::from_ymd_opt(2024, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()) })
+        assess(&Input {
+            case_id: case,
+            root: Path::new("/x"),
+            reports: &[],
+            claims: &c,
+            thresholds: &Thresholds::default(),
+            git: None,
+            previous: None,
+            project: ProjectSummary::default(),
+            now: metadata_core::TimeValue::naive(
+                chrono::NaiveDate::from_ymd_opt(2024, 1, 1)
+                    .unwrap()
+                    .and_hms_opt(0, 0, 0)
+                    .unwrap(),
+            ),
+        })
     }
 
     #[test]
