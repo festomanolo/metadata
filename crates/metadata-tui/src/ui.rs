@@ -30,8 +30,14 @@ fn clip(s: &str, w: usize) -> String {
 }
 
 fn panel<'a>(t: &Theme, title: &'a str, focused: bool) -> Block<'a> {
-    let b = Block::default().borders(Borders::ALL).border_type(BorderType::Plain).border_style(if focused { t.accent_s() } else { t.border_s() });
-    b.title(Span::styled(format!(" {title} "), if focused { t.title_s() } else { t.dim_s() }))
+    let b = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Plain)
+        .border_style(if focused { t.accent_s() } else { t.border_s() });
+    b.title(Span::styled(
+        format!(" {title} "),
+        if focused { t.title_s() } else { t.dim_s() },
+    ))
 }
 
 pub fn draw(f: &mut Frame, app: &App) {
@@ -40,14 +46,25 @@ pub fn draw(f: &mut Frame, app: &App) {
     if area.width < MIN_W || area.height < MIN_H {
         let msg = Paragraph::new(vec![
             Line::from(Span::styled("METADATA", t.title_s())),
-            Line::from(format!("Terminal too small ({}×{}).", area.width, area.height)),
-            Line::from(format!("Need at least {MIN_W}×{MIN_H}. Resize, or use the CLI commands.")),
+            Line::from(format!(
+                "Terminal too small ({}×{}).",
+                area.width, area.height
+            )),
+            Line::from(format!(
+                "Need at least {MIN_W}×{MIN_H}. Resize, or use the CLI commands."
+            )),
         ])
         .alignment(Alignment::Center);
         f.render_widget(msg, area);
         return;
     }
-    let [header, tabs, body, footer] = Layout::vertical([Constraint::Length(1), Constraint::Length(1), Constraint::Min(5), Constraint::Length(2)]).areas(area);
+    let [header, tabs, body, footer] = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Min(5),
+        Constraint::Length(2),
+    ])
+    .areas(area);
     draw_header(f, header, app, &t);
     draw_tabs(f, tabs, app, &t);
     let wide = body.width >= 100;
@@ -70,9 +87,16 @@ pub fn draw(f: &mut Frame, app: &App) {
         Section::Edit => draw_edit(f, main, app, &t),
         Section::Settings => draw_settings(f, main, app, &t),
         Section::Cases | Section::Reports => {
-            let name = if app.section == Section::Cases { "Cases" } else { "Reports" };
+            let name = if app.section == Section::Cases {
+                "Cases"
+            } else {
+                "Reports"
+            };
             let p = Paragraph::new(vec![
-                Line::from(Span::styled(format!("{name} — not implemented yet"), t.warn_s())),
+                Line::from(Span::styled(
+                    format!("{name} — not implemented yet"),
+                    t.warn_s(),
+                )),
                 Line::from(""),
                 Line::from("Persistent cases and HTML reports are planned. Use the CLI today:"),
                 Line::from(Span::styled("  metadata assess <dir> --case ID -f json -o assessment.json", t.dim_s())),
