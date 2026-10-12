@@ -128,6 +128,14 @@ fn gps_profile_is_routed_to_exiftool() {
     let (e, _) = stub_engine(d.path());
     let src = d.path().join("a.jpg");
     std::fs::write(&src, kit::jpeg(None, None, 4, 4)).unwrap();
-    let p = plan(&e, &src, &EditRequest { ops: vec![], profile: Some(Profile::Gps) }).unwrap();
+    let p = plan(
+        &e,
+        &src,
+        &EditRequest {
+            ops: vec![],
+            profile: Some(Profile::Gps),
+        },
+    )
+    .unwrap();
     assert_eq!(p.backend, "exiftool");
 }
