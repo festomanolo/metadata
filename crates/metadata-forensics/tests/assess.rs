@@ -12,17 +12,42 @@ fn put(dir: &Path, name: &str, data: &[u8]) {
     std::fs::write(p, data).unwrap();
 }
 fn scan(root: &Path) -> Vec<FileReport> {
-    let e = Engine::new(Options { use_external: false, ..Default::default() });
-    let files = collect_files(&[root.to_path_buf()], &ScanOptions { recursive: true, ..Default::default() }).files;
+    let e = Engine::new(Options {
+        use_external: false,
+        ..Default::default()
+    });
+    let files = collect_files(
+        &[root.to_path_buf()],
+        &ScanOptions {
+            recursive: true,
+            ..Default::default()
+        },
+    )
+    .files;
     e.inspect_many(&files, 2, &|_, _| {})
 }
 fn docx(created: &str, modified: &str) -> Vec<u8> {
-    kit::docx(&kit::DocxSpec { creator: "Ann", last_modified_by: "Ann", created, modified, revision: 1, tracked_insertions: 0, application: "W" })
+    kit::docx(&kit::DocxSpec {
+        creator: "Ann",
+        last_modified_by: "Ann",
+        created,
+        modified,
+        revision: 1,
+        tracked_insertions: 0,
+        application: "W",
+    })
 }
 fn run(root: &Path, reports: &[FileReport], claims: &Claims, now: &str) -> Assessment {
     run_with(root, reports, claims, now, None, None)
 }
-fn run_with(root: &Path, reports: &[FileReport], claims: &Claims, now: &str, git: Option<&metadata_forensics::git::GitHistory>, prev: Option<(&Path, &[FileReport])>) -> Assessment {
+fn run_with(
+    root: &Path,
+    reports: &[FileReport],
+    claims: &Claims,
+    now: &str,
+    git: Option<&metadata_forensics::git::GitHistory>,
+    prev: Option<(&Path, &[FileReport])>,
+) -> Assessment {
     assess(&Input {
         case_id: "t1",
         root,
@@ -39,13 +64,21 @@ fn rules(a: &Assessment) -> Vec<&str> {
     a.findings.iter().map(|f| f.rule.as_str()).collect()
 }
 fn claims(start: &str, deadline: &str) -> Claims {
-    Claims { start: Some(start.into()), deadline: Some(deadline.into()), ..Default::default() }
+    Claims {
+        start: Some(start.into()),
+        deadline: Some(deadline.into()),
+        ..Default::default()
+    }
 }
 
 #[test]
 fn created_before_start_flags_review_with_full_explanation() {
     let d = tempfile::tempdir().unwrap();
-    put(d.path(), "old.docx", &docx("2023-01-01T09:00:00Z", "2024-02-01T09:00:00Z"));
+    put(
+        d.path(),
+        "old.docx",
+        &docx("2023-01-01T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
     let r = scan(d.path());
     let a = run(d.path(), &r, &claims("2024-01-10", "2024-06-01"), "2024-06-02T00:00:00Z");
     let f = a.findings.iter().find(|f| f.rule == "TS-BEFORE-START").expect("finding");
