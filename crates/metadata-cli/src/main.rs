@@ -179,6 +179,30 @@ fn run(cli: Cli) -> Result<i32> {
             &w,
             &c,
         ),
+        Cmd::Tui {
+            path,
+            no_scan,
+            no_external,
+        } => {
+            if !std::io::stdout().is_terminal() || !std::io::stdin().is_terminal() {
+                bail!("`metadata tui` needs an interactive terminal; use inspect/extract for scripted output");
+            }
+            let root = path.unwrap_or_else(|| PathBuf::from("."));
+            let root = if root.is_file() {
+                root.parent()
+                    .map(Path::to_path_buf)
+                    .unwrap_or_else(|| PathBuf::from("."))
+            } else {
+                root
+            };
+            let root = root.canonicalize().unwrap_or(root);
+            metadata_tui::run(
+                root,
+                !no_scan,
+                !no_external && ctx.cfg.use_external.unwrap_or(true),
+            )?;
+            Ok(0)
+        }
         Cmd::Capabilities { format } => cmd_caps(&ctx, format),
         Cmd::Doctor { format } => cmd_doctor(&ctx, format),
         Cmd::Config { path, init } => cmd_config(&ctx, path, init),
