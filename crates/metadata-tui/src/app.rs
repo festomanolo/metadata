@@ -660,7 +660,10 @@ impl App {
     }
 
     fn cycle_section(&mut self, d: isize) {
-        let i = SECTIONS.iter().position(|(s, _, _)| *s == self.section).unwrap_or(0) as isize;
+        let i = SECTIONS
+            .iter()
+            .position(|(s, _, _)| *s == self.section)
+            .unwrap_or(0) as isize;
         let n = SECTIONS.len() as isize;
         self.section = SECTIONS[((i + d).rem_euclid(n)) as usize].0;
     }
@@ -695,7 +698,11 @@ impl App {
             KeyCode::End => return self.nav(100_000),
             KeyCode::Char('r') => {
                 self.reveal = !self.reveal;
-                self.status = if self.reveal { "Personal and location values are now VISIBLE.".into() } else { "Personal and location values hidden.".into() };
+                self.status = if self.reveal {
+                    "Personal and location values are now VISIBLE.".into()
+                } else {
+                    "Personal and location values hidden.".into()
+                };
                 return;
             }
             KeyCode::Char('d') if self.section != Section::Edit => {
@@ -716,7 +723,11 @@ impl App {
             Section::Inspect => self.key_inspect(k),
             Section::Scan => {
                 if k.code == KeyCode::Enter {
-                    self.modal = Modal::Input { prompt: "Directory to scan (recursive)".into(), buf: self.root.display().to_string(), purpose: InputPurpose::ScanPath };
+                    self.modal = Modal::Input {
+                        prompt: "Directory to scan (recursive)".into(),
+                        buf: self.root.display().to_string(),
+                        purpose: InputPurpose::ScanPath,
+                    };
                 }
             }
             Section::Timeline => {
@@ -783,7 +794,9 @@ impl App {
             KeyCode::Enter | KeyCode::Char(' ') => match self.focus {
                 Focus::Files => self.focus = Focus::Fields,
                 Focus::Fields => {
-                    if let Some(Row::Group { name, .. }) = self.field_rows().into_iter().nth(self.field_cursor) {
+                    if let Some(Row::Group { name, .. }) =
+                        self.field_rows().into_iter().nth(self.field_cursor)
+                    {
                         if !self.collapsed.remove(&name) {
                             self.collapsed.insert(name);
                         }
