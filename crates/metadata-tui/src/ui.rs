@@ -714,7 +714,13 @@ fn draw_settings(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
             on(app.use_external)
         ),
     ];
-    let list = List::new(items.into_iter().map(ListItem::new).collect::<Vec<_>>()).block(panel(t, "Settings (session only; persistent options live in `metadata config`)", true)).highlight_style(t.sel_s());
+    let list = List::new(items.into_iter().map(ListItem::new).collect::<Vec<_>>())
+        .block(panel(
+            t,
+            "Settings (session only; persistent options live in `metadata config`)",
+            true,
+        ))
+        .highlight_style(t.sel_s());
     let mut st = ListState::default().with_selected(Some(app.settings_cursor));
     f.render_stateful_widget(list, a, &mut st);
 }
@@ -723,19 +729,47 @@ fn draw_details(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
     let w = a.width.saturating_sub(4) as usize;
     let mut lines: Vec<Line> = vec![];
     if let Some(r) = app.current() {
-        let name = std::path::Path::new(&r.path).file_name().unwrap_or_default().to_string_lossy().to_string();
+        let name = std::path::Path::new(&r.path)
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
         lines.push(Line::from(Span::styled(clip(&name, w), t.title_s())));
-        lines.push(Line::from(Span::styled(clip(&format!("{} · {} B", r.format.description, r.size), w), t.dim_s())));
-        if let Some(h) = &r.sha256 { lines.push(Line::from(Span::styled(format!("sha256 {}", &h[..16]), t.dim_s()))); }
+        lines.push(Line::from(Span::styled(
+            clip(&format!("{} · {} B", r.format.description, r.size), w),
+            t.dim_s(),
+        )));
+        if let Some(h) = &r.sha256 {
+            lines.push(Line::from(Span::styled(
+                format!("sha256 {}", &h[..16]),
+                t.dim_s(),
+            )));
+        }
         let selected_field = if app.section == Section::Inspect && app.focus == Focus::Fields {
-            match app.field_rows().into_iter().nth(app.field_cursor) { Some(Row::Field(i)) => Some(&r.fields[i]), _ => None }
-        } else { None };
+            match app.field_rows().into_iter().nth(app.field_cursor) {
+                Some(Row::Field(i)) => Some(&r.fields[i]),
+                _ => None,
+            }
+        } else {
+            None
+        };
         if let Some(fl) = selected_field {
             lines.push(Line::from(""));
             lines.push(Line::from(Span::styled(clip(&fl.key(), w), t.accent_s())));
             lines.push(Line::from(clip(&app.display_value(fl), w * 3)));
             if let Some(tm) = &fl.time {
-                lines.push(Line::from(Span::styled(if tm.offset_known { format!("UTC {}", tm.utc.clone().unwrap_or_default()) } else { "timezone NOT recorded — not assumed UTC".into() }, if tm.offset_known { t.ok_s() } else { t.warn_s() })));
+                lines.push(Line::from(Span::styled(
+                    if tm.offset_known {
+                        format!("UTC {}", tm.utc.clone().unwrap_or_default())
+                    } else {
+                        "timezone NOT recorded — not assumed UTC".into()
+                    },
+                    if tm.offset_known {
+                        t.ok_s()
+                    } else {
+                        t.warn_s()
+                    },
+                )));
             }
             lines.push(Line::from(Span::styled(format!("source: {} · {:?}", fl.backend, fl.provenance), t.dim_s())));
             if let Some(x) = metadata_engine::explain::explain(&fl.group, &fl.name) { lines.push(Line::from("")); lines.push(Line::from(Span::styled(x, t.dim_s()))); }
