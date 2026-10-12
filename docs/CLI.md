@@ -137,3 +137,142 @@ Usage: metadata search [OPTIONS] <PATHS>...
 Arguments:
   <PATHS>...  
 
+Options:
+      --field <FIELD>      Field name (e.g. Author, GPSLatitude) or Group:Name. Common names expand to equivalents across formats
+  -v, --verbose...         Increase diagnostics on stderr (-v info, -vv debug)
+      --no-color           Disable colored output
+      --value <VALUE>      Substring to match in values (case-insensitive)
+  -r, --recursive          Descend into directories
+  -f, --format <FORMAT>    Output format [default: from config, else per-command] [possible values: human, json, csv]
+  -o, --output <OUTPUT>    Write output to FILE instead of stdout (refuses to overwrite without --force)
+      --force              Allow --output to replace an existing file
+      --cache              Reuse cached extraction results keyed by file hash and settings (stored in the config dir)
+      --all                Include raw/unknown fields and list every archive entry
+      --deep               Inspect nested archives (bounded by archive limits)
+      --no-hash            Skip SHA-256 computation
+      --no-external        Do not use exiftool/ffprobe even if installed
+      --redact             Mask GPS and personal identifiers (author, serial numbers, ...)
+  -j, --jobs <JOBS>        Parallel workers
+      --timeout <TIMEOUT>  Per external tool timeout (seconds)
+      --exclude <DIR>      Directory name to skip while walking (repeatable)
+      --include-vcs        Include `.git` internals when walking (excluded by default)
+      --filter <TEXT>      Only show fields whose group, name or value contains TEXT
+  -h, --help               Print help
+```
+
+## `metadata compare`
+
+```text
+Compare metadata of two files or two directories
+
+Usage: metadata compare [OPTIONS] <LEFT> <RIGHT>
+
+Arguments:
+  <LEFT>   
+  <RIGHT>  
+
+Options:
+      --show-identical     Also list identical fields
+  -v, --verbose...         Increase diagnostics on stderr (-v info, -vv debug)
+      --no-color           Disable colored output
+  -r, --recursive          Descend into directories
+  -f, --format <FORMAT>    Output format [default: from config, else per-command] [possible values: human, json, csv]
+  -o, --output <OUTPUT>    Write output to FILE instead of stdout (refuses to overwrite without --force)
+      --force              Allow --output to replace an existing file
+      --cache              Reuse cached extraction results keyed by file hash and settings (stored in the config dir)
+      --all                Include raw/unknown fields and list every archive entry
+      --deep               Inspect nested archives (bounded by archive limits)
+      --no-hash            Skip SHA-256 computation
+      --no-external        Do not use exiftool/ffprobe even if installed
+      --redact             Mask GPS and personal identifiers (author, serial numbers, ...)
+  -j, --jobs <JOBS>        Parallel workers
+      --timeout <TIMEOUT>  Per external tool timeout (seconds)
+      --exclude <DIR>      Directory name to skip while walking (repeatable)
+      --include-vcs        Include `.git` internals when walking (excluded by default)
+      --filter <TEXT>      Only show fields whose group, name or value contains TEXT
+  -h, --help               Print help
+```
+
+## `metadata batch`
+
+```text
+Process a folder and produce a per-file success/failure report (default: JSON)
+
+Usage: metadata batch [OPTIONS] <PATHS>...
+
+Arguments:
+  <PATHS>...  
+
+Options:
+  -r, --recursive          Descend into directories
+  -v, --verbose...         Increase diagnostics on stderr (-v info, -vv debug)
+  -f, --format <FORMAT>    Output format [default: from config, else per-command] [possible values: human, json, csv]
+      --no-color           Disable colored output
+  -o, --output <OUTPUT>    Write output to FILE instead of stdout (refuses to overwrite without --force)
+      --force              Allow --output to replace an existing file
+      --cache              Reuse cached extraction results keyed by file hash and settings (stored in the config dir)
+      --all                Include raw/unknown fields and list every archive entry
+      --deep               Inspect nested archives (bounded by archive limits)
+      --no-hash            Skip SHA-256 computation
+      --no-external        Do not use exiftool/ffprobe even if installed
+      --redact             Mask GPS and personal identifiers (author, serial numbers, ...)
+  -j, --jobs <JOBS>        Parallel workers
+      --timeout <TIMEOUT>  Per external tool timeout (seconds)
+      --exclude <DIR>      Directory name to skip while walking (repeatable)
+      --include-vcs        Include `.git` internals when walking (excluded by default)
+      --filter <TEXT>      Only show fields whose group, name or value contains TEXT
+  -h, --help               Print help
+```
+
+## `metadata hash`
+
+```text
+Compute file hashes, optionally writing an integrity manifest
+
+Usage: metadata hash [OPTIONS] <PATHS>...
+
+Arguments:
+  <PATHS>...  
+
+Options:
+      --algorithm <ALGORITHM>  [default: sha256] [possible values: sha256, sha512]
+  -v, --verbose...             Increase diagnostics on stderr (-v info, -vv debug)
+      --manifest <MANIFEST>    Write a versioned manifest JSON to this path
+      --no-color               Disable colored output
+  -r, --recursive              Descend into directories
+  -f, --format <FORMAT>        Output format [default: from config, else per-command] [possible values: human, json, csv]
+  -o, --output <OUTPUT>        Write output to FILE instead of stdout (refuses to overwrite without --force)
+      --force                  Allow --output to replace an existing file
+      --cache                  Reuse cached extraction results keyed by file hash and settings (stored in the config dir)
+      --all                    Include raw/unknown fields and list every archive entry
+      --deep                   Inspect nested archives (bounded by archive limits)
+      --no-hash                Skip SHA-256 computation
+      --no-external            Do not use exiftool/ffprobe even if installed
+      --redact                 Mask GPS and personal identifiers (author, serial numbers, ...)
+  -j, --jobs <JOBS>            Parallel workers
+      --timeout <TIMEOUT>      Per external tool timeout (seconds)
+      --exclude <DIR>          Directory name to skip while walking (repeatable)
+      --include-vcs            Include `.git` internals when walking (excluded by default)
+      --filter <TEXT>          Only show fields whose group, name or value contains TEXT
+  -h, --help                   Print help
+```
+
+## `metadata verify-manifest`
+
+```text
+Verify files against a manifest created by `hash --manifest`
+
+Usage: metadata verify-manifest [OPTIONS] <MANIFEST>
+
+Arguments:
+  <MANIFEST>  
+
+Options:
+      --root <ROOT>      Directory the manifest paths are relative to [default: manifest's recorded root]
+  -v, --verbose...       Increase diagnostics on stderr (-v info, -vv debug)
+      --check-extra      Also report files under --root that are not in the manifest
+      --no-color         Disable colored output
+  -f, --format <FORMAT>  [possible values: human, json, csv]
+  -h, --help             Print help
+```
+
