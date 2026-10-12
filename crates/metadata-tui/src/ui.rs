@@ -175,6 +175,21 @@ fn draw_tabs(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
         }
         tabs = render(n, s);
     }
+    let spans: Vec<Span> = tabs
+        .into_iter()
+        .map(|(active, ok, text)| {
+            Span::styled(
+                text,
+                if active {
+                    t.sel_s().add_modifier(Modifier::BOLD)
+                } else if ok {
+                    t.base()
+                } else {
+                    t.dim_s()
+                },
+            )
+        })
+        .collect();
     f.render_widget(Paragraph::new(Line::from(spans)), a);
 }
 
@@ -188,21 +203,40 @@ fn draw_footer(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
         Section::Edit => "↑↓ field  Enter set  x remove  u undo  p preview  w write copy  ? help",
         _ => "Tab/Shift+Tab sections  1-9 jump  ? help  q quit",
     };
-    f.render_widget(Paragraph::new(Span::styled(clip(keys, a.width as usize), t.dim_s())), l1);
+    f.render_widget(
+        Paragraph::new(Span::styled(clip(keys, a.width as usize), t.dim_s())),
+        l1,
+    );
     if let Some(s) = &app.scan {
-        let ratio = if s.total == 0 { 0.0 } else { s.done as f64 / s.total as f64 };
-        let g = Gauge::default().ratio(ratio.clamp(0.0, 1.0)).label(format!("scanning {}/{}  (Ctrl+C cancels)", s.done, s.total)).gauge_style(t.accent_s());
+        let ratio = if s.total == 0 {
+            0.0
+        } else {
+            s.done as f64 / s.total as f64
+        };
+        let g = Gauge::default()
+            .ratio(ratio.clamp(0.0, 1.0))
+            .label(format!("scanning {}/{}  (Ctrl+C cancels)", s.done, s.total))
+            .gauge_style(t.accent_s());
         f.render_widget(g, l2);
     } else {
-        f.render_widget(Paragraph::new(Span::styled(clip(&app.status, a.width as usize), t.base())), l2);
+        f.render_widget(
+            Paragraph::new(Span::styled(clip(&app.status, a.width as usize), t.base())),
+            l2,
+        );
     }
 }
 
 fn draw_overview(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
     let s = crate::app::Stats::compute(&app.reports);
     let [top, bottom] = Layout::vertical([Constraint::Length(9), Constraint::Min(3)]).areas(a);
-    let [l, r] = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(top);
-    let kv = |k: &str, v: String, st: Style| Line::from(vec![Span::styled(format!("{k:<26}"), t.dim_s()), Span::styled(v, st)]);
+    let [l, r] =
+        Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(top);
+    let kv = |k: &str, v: String, st: Style| {
+        Line::from(vec![
+            Span::styled(format!("{k:<26}"), t.dim_s()),
+            Span::styled(v, st),
+        ])
+    };
     let lines = vec![
         kv("Files examined", s.files.to_string(), t.base()),
         kv("Metadata fields extracted", s.fields.to_string(), t.base()),
