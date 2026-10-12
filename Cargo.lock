@@ -1436,6 +1436,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "metadata-report"
+version = "0.1.0"
+dependencies = [
+ "metadata-core",
+ "metadata-forensics",
+ "metadata-testkit",
+]
+
+[[package]]
+name = "metadata-storage"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "metadata-core",
+ "metadata-forensics",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "metadata-testkit"
 version = "0.1.0"
 dependencies = [
