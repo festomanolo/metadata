@@ -555,3 +555,143 @@ Options:
       --search <SEARCH>  
   -v, --verbose...       Increase diagnostics on stderr (-v info, -vv debug)
   -f, --format <FORMAT>  [possible values: human, json, csv]
+      --no-color         Disable colored output
+  -h, --help             Print help
+```
+
+### `metadata case show`
+
+```text
+Show a case: claims, submissions and finding dispositions
+
+Usage: metadata case show [OPTIONS] <ID>
+
+Arguments:
+  <ID>  
+
+Options:
+      --db <DB>          Case database [default: <config dir>/cases.sqlite] [env: METADATA_DB=]
+  -f, --format <FORMAT>  [possible values: human, json, csv]
+  -v, --verbose...       Increase diagnostics on stderr (-v info, -vv debug)
+      --no-color         Disable colored output
+  -h, --help             Print help
+```
+
+### `metadata case add`
+
+```text
+Ingest a submission folder: assess it against the case claims and the previous submission
+
+Usage: metadata case add [OPTIONS] <ID> <PATH>
+
+Arguments:
+  <ID>    
+  <PATH>  
+
+Options:
+      --db <DB>            Case database [default: <config dir>/cases.sqlite] [env: METADATA_DB=]
+      --label <LABEL>      [default: ""]
+  -v, --verbose...         Increase diagnostics on stderr (-v info, -vv debug)
+      --no-color           Disable colored output
+      --no-git             
+      --include-personal   
+  -r, --recursive          Descend into directories
+  -f, --format <FORMAT>    Output format [default: from config, else per-command] [possible values: human, json, csv]
+  -o, --output <OUTPUT>    Write output to FILE instead of stdout (refuses to overwrite without --force)
+      --force              Allow --output to replace an existing file
+      --cache              Reuse cached extraction results keyed by file hash and settings (stored in the config dir)
+      --all                Include raw/unknown fields and list every archive entry
+      --deep               Inspect nested archives (bounded by archive limits)
+      --no-hash            Skip SHA-256 computation
+      --no-external        Do not use exiftool/ffprobe even if installed
+      --redact             Mask GPS and personal identifiers (author, serial numbers, ...)
+  -j, --jobs <JOBS>        Parallel workers
+      --timeout <TIMEOUT>  Per external tool timeout (seconds)
+      --exclude <DIR>      Directory name to skip while walking (repeatable)
+      --include-vcs        Include `.git` internals when walking (excluded by default)
+      --filter <TEXT>      Only show fields whose group, name or value contains TEXT
+  -h, --help               Print help
+```
+
+### `metadata case finding`
+
+```text
+Set a finding's disposition (open | reviewed | dismissed; dismissal needs --reason)
+
+Usage: metadata case finding [OPTIONS] --status <STATUS> <ID> <FINDING_ID>
+
+Arguments:
+  <ID>          
+  <FINDING_ID>  
+
+Options:
+      --db <DB>          Case database [default: <config dir>/cases.sqlite] [env: METADATA_DB=]
+      --status <STATUS>  [possible values: open, reviewed, dismissed]
+  -v, --verbose...       Increase diagnostics on stderr (-v info, -vv debug)
+      --no-color         Disable colored output
+      --note <NOTE>      
+      --reason <REASON>  
+  -h, --help             Print help
+```
+
+### `metadata case note`
+
+```text
+Add a free-text reviewer note
+
+Usage: metadata case note [OPTIONS] <ID> <TEXT>
+
+Arguments:
+  <ID>    
+  <TEXT>  
+
+Options:
+      --db <DB>     Case database [default: <config dir>/cases.sqlite] [env: METADATA_DB=]
+  -v, --verbose...  Increase diagnostics on stderr (-v info, -vv debug)
+      --no-color    Disable colored output
+  -h, --help        Print help
+```
+
+### `metadata case report`
+
+```text
+Export a report for a submission (default: latest)
+
+Usage: metadata case report [OPTIONS] <ID>
+
+Arguments:
+  <ID>  
+
+Options:
+      --db <DB>                  Case database [default: <config dir>/cases.sqlite] [env: METADATA_DB=]
+      --submission <SUBMISSION>  
+  -v, --verbose...               Increase diagnostics on stderr (-v info, -vv debug)
+      --html <FILE>              
+      --no-color                 Disable colored output
+      --csv <FILE>               
+      --timeline                 Include the per-file timeline in the HTML report
+      --force                    
+  -f, --format <FORMAT>          [possible values: human, json, csv]
+  -h, --help                     Print help
+```
+
+### `metadata case diff`
+
+```text
+Compare two submissions of a case file by file
+
+Usage: metadata case diff [OPTIONS] <ID> <A> <B>
+
+Arguments:
+  <ID>  
+  <A>   
+  <B>   
+
+Options:
+      --db <DB>          Case database [default: <config dir>/cases.sqlite] [env: METADATA_DB=]
+  -f, --format <FORMAT>  [possible values: human, json, csv]
+  -v, --verbose...       Increase diagnostics on stderr (-v info, -vv debug)
+      --no-color         Disable colored output
+  -h, --help             Print help
+```
+
