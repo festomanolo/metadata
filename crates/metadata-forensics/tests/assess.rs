@@ -150,22 +150,57 @@ fn future_timestamp_is_high_priority_and_sorted_first() {
 #[test]
 fn after_deadline_and_modified_before_created() {
     let d = tempfile::tempdir().unwrap();
-    put(d.path(), "late.docx", &docx("2024-02-01T09:00:00Z", "2024-07-15T09:00:00Z"));
-    put(d.path(), "odd.docx", &docx("2024-05-01T09:00:00Z", "2024-03-01T09:00:00Z"));
-    let a = run(d.path(), &scan(d.path()), &claims("2024-01-10", "2024-06-01"), "2024-08-01T00:00:00Z");
-    assert!(a.findings.iter().any(|f| f.rule == "TS-AFTER" && f.files == vec!["late.docx"]));
-    assert!(a.findings.iter().any(|f| f.rule == "TS-MOD-BEFORE-CREATE" && f.files == vec!["odd.docx"]));
+    put(
+        d.path(),
+        "late.docx",
+        &docx("2024-02-01T09:00:00Z", "2024-07-15T09:00:00Z"),
+    );
+    put(
+        d.path(),
+        "odd.docx",
+        &docx("2024-05-01T09:00:00Z", "2024-03-01T09:00:00Z"),
+    );
+    let a = run(
+        d.path(),
+        &scan(d.path()),
+        &claims("2024-01-10", "2024-06-01"),
+        "2024-08-01T00:00:00Z",
+    );
+    assert!(a
+        .findings
+        .iter()
+        .any(|f| f.rule == "TS-AFTER" && f.files == vec!["late.docx"]));
+    assert!(a
+        .findings
+        .iter()
+        .any(|f| f.rule == "TS-MOD-BEFORE-CREATE" && f.files == vec!["odd.docx"]));
 }
 
 #[test]
 fn milestone_rule_respects_path_filter() {
     let d = tempfile::tempdir().unwrap();
-    put(d.path(), "proposal/p.docx", &docx("2024-03-01T09:00:00Z", "2024-03-02T09:00:00Z"));
-    put(d.path(), "final/f.docx", &docx("2024-03-01T09:00:00Z", "2024-03-02T09:00:00Z"));
+    put(
+        d.path(),
+        "proposal/p.docx",
+        &docx("2024-03-01T09:00:00Z", "2024-03-02T09:00:00Z"),
+    );
+    put(
+        d.path(),
+        "final/f.docx",
+        &docx("2024-03-01T09:00:00Z", "2024-03-02T09:00:00Z"),
+    );
     let mut c = claims("2024-01-10", "2024-06-01");
-    c.milestones.push(Milestone { name: "Proposal".into(), date: "2024-02-01".into(), path_contains: Some("proposal".into()) });
+    c.milestones.push(Milestone {
+        name: "Proposal".into(),
+        date: "2024-02-01".into(),
+        path_contains: Some("proposal".into()),
+    });
     let a = run(d.path(), &scan(d.path()), &c, "2024-08-01T00:00:00Z");
-    let hits: Vec<_> = a.findings.iter().filter(|f| f.rule == "MS-LATE-CREATION").collect();
+    let hits: Vec<_> = a
+        .findings
+        .iter()
+        .filter(|f| f.rule == "MS-LATE-CREATION")
+        .collect();
     assert_eq!(hits.len(), 1);
     assert_eq!(hits[0].files, vec!["proposal/p.docx"]);
 }
@@ -174,9 +209,18 @@ fn milestone_rule_respects_path_filter() {
 fn ids_are_stable_and_path_relative() {
     let mk = || {
         let d = tempfile::tempdir().unwrap();
-        put(d.path(), "old.docx", &docx("2023-01-01T09:00:00Z", "2024-02-01T09:00:00Z"));
+        put(
+            d.path(),
+            "old.docx",
+            &docx("2023-01-01T09:00:00Z", "2024-02-01T09:00:00Z"),
+        );
         let r = scan(d.path());
-        let a = run(d.path(), &r, &claims("2024-01-10", "2024-06-01"), "2024-06-02T00:00:00Z");
+        let a = run(
+            d.path(),
+            &r,
+            &claims("2024-01-10", "2024-06-01"),
+            "2024-06-02T00:00:00Z",
+        );
         a.findings.iter().map(|f| f.id.clone()).collect::<Vec<_>>()
     };
     assert_eq!(mk(), mk(), "ids must not depend on the temp directory");
