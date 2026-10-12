@@ -142,10 +142,12 @@ fn run(cli: Cli) -> Result<i32> {
                 previous,
                 no_git,
                 include_personal,
+                html,
                 min_severity,
             },
             &c,
         ),
+        Cmd::Case { db, cmd } => case_cmd::cmd_case(&ctx, db, cmd),
         Cmd::Edit {
             paths,
             set,
@@ -294,8 +296,13 @@ pub(crate) fn scan(ctx: &Ctx, engine: &Engine, paths: &[PathBuf], c: &Common) ->
         )
         .unwrap(),
     );
-    let mut reports =
-        engine.inspect_many(&col.files, so.jobs, &|done, _| pb.set_position(done as u64));
+    let mut reports = if c.cache {
+        cache::inspect_many_cached(engine, &col.files, so.jobs, &|done, _| {
+            pb.set_position(done as u64)
+        })
+    } else {
+        engine.inspect_many(&col.files, so.jobs, &|done, _| pb.set_position(done as u64))
+    };
     pb.finish_and_clear();
     if ctx.cancel.load(Ordering::Relaxed) {
         eprintln!(
