@@ -36,7 +36,12 @@ pub struct Thresholds {
 
 impl Default for Thresholds {
     fn default() -> Self {
-        Thresholds { tolerance_hours: 24, uniform_min_files: 5, gap_days: 21, max_commits: 20_000 }
+        Thresholds {
+            tolerance_hours: 24,
+            uniform_min_files: 5,
+            gap_days: 21,
+            max_commits: 20_000,
+        }
     }
 }
 
@@ -51,17 +56,28 @@ pub fn parse_claim(s: &str) -> Result<DayRange> {
     let s = s.trim();
     if let Ok(d) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
         let st = d.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp();
-        return Ok(DayRange { start: st, end: st + 86_399 });
+        return Ok(DayRange {
+            start: st,
+            end: st + 86_399,
+        });
     }
     time::parse_iso(s)
         .and_then(|t| t.sort_key())
         .map(|k| DayRange { start: k, end: k })
-        .ok_or_else(|| MetaError::InvalidArgument(format!("cannot parse date '{s}' (use YYYY-MM-DD or RFC 3339)")))
+        .ok_or_else(|| {
+            MetaError::InvalidArgument(format!(
+                "cannot parse date '{s}' (use YYYY-MM-DD or RFC 3339)"
+            ))
+        })
 }
 
 pub fn parse_claim_time(s: &str) -> Result<TimeValue> {
     let r = parse_claim(s)?;
-    Ok(TimeValue::naive(chrono::DateTime::from_timestamp(r.start, 0).unwrap().naive_utc()))
+    Ok(TimeValue::naive(
+        chrono::DateTime::from_timestamp(r.start, 0)
+            .unwrap()
+            .naive_utc(),
+    ))
 }
 
 impl Claims {
