@@ -363,6 +363,7 @@ pub fn verify_unchanged(root: &Path, reports: &[FileReport]) -> Integrity {
 
 /// Mask personal identifiers in evidence values (author names etc.).
 pub fn redact(a: &mut Assessment) {
+    a.personal_data_redacted = true;
     for f in &mut a.findings {
         for e in &mut f.evidence {
             let name = e.field.rsplit(':').next().unwrap_or("");
@@ -1185,4 +1186,40 @@ fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
             }
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FindingStatus {
+    Open,
+    Reviewed,
+    Dismissed,
+}
+
+impl FindingStatus {
+    pub fn parse(s: &str) -> Option<FindingStatus> {
+        match s {
+            "open" => Some(FindingStatus::Open),
+            "reviewed" => Some(FindingStatus::Reviewed),
+            "dismissed" => Some(FindingStatus::Dismissed),
+            _ => None,
+        }
+    }
+    pub fn as_str(self) -> &'static str {
+        match self {
+            FindingStatus::Open => "open",
+            FindingStatus::Reviewed => "reviewed",
+            FindingStatus::Dismissed => "dismissed",
+        }
+    }
+}
+
+/// Reviewer disposition of a finding (kept in the case database, never in the evidence).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FindingState {
+    pub status: FindingStatus,
+    pub note: Option<String>,
+    /// Required when dismissed.
+    pub reason: Option<String>,
+    pub updated_at: String,
 }
