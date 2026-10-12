@@ -771,26 +771,65 @@ fn draw_details(f: &mut Frame, a: Rect, app: &App, t: &Theme) {
                     },
                 )));
             }
-            lines.push(Line::from(Span::styled(format!("source: {} · {:?}", fl.backend, fl.provenance), t.dim_s())));
-            if let Some(x) = metadata_engine::explain::explain(&fl.group, &fl.name) { lines.push(Line::from("")); lines.push(Line::from(Span::styled(x, t.dim_s()))); }
+            lines.push(Line::from(Span::styled(
+                format!("source: {} · {:?}", fl.backend, fl.provenance),
+                t.dim_s(),
+            )));
+            if let Some(x) = metadata_engine::explain::explain(&fl.group, &fl.name) {
+                lines.push(Line::from(""));
+                lines.push(Line::from(Span::styled(x, t.dim_s())));
+            }
         } else {
             lines.push(Line::from(""));
-            if r.format.extension_match == metadata_core::ExtensionMatch::Mismatch { lines.push(Line::from(Span::styled("extension does not match content", t.warn_s()))); }
-            for w_ in r.warnings.iter().take(4) { lines.push(Line::from(Span::styled(format!("! {}", clip(&w_.message, w)), t.warn_s()))); }
-            for u in r.unavailable.iter().take(3) { lines.push(Line::from(Span::styled(format!("– {}", clip(u, w)), t.dim_s()))); }
-            if let Some(m) = &r.filesystem.modified { lines.push(Line::from(Span::styled(format!("fs modified {}", m.iso), t.dim_s()))); }
-            lines.push(Line::from(Span::styled("filesystem times change on copy/extract", t.dim_s())));
+            if r.format.extension_match == metadata_core::ExtensionMatch::Mismatch {
+                lines.push(Line::from(Span::styled(
+                    "extension does not match content",
+                    t.warn_s(),
+                )));
+            }
+            for w_ in r.warnings.iter().take(4) {
+                lines.push(Line::from(Span::styled(
+                    format!("! {}", clip(&w_.message, w)),
+                    t.warn_s(),
+                )));
+            }
+            for u in r.unavailable.iter().take(3) {
+                lines.push(Line::from(Span::styled(
+                    format!("– {}", clip(u, w)),
+                    t.dim_s(),
+                )));
+            }
+            if let Some(m) = &r.filesystem.modified {
+                lines.push(Line::from(Span::styled(
+                    format!("fs modified {}", m.iso),
+                    t.dim_s(),
+                )));
+            }
+            lines.push(Line::from(Span::styled(
+                "filesystem times change on copy/extract",
+                t.dim_s(),
+            )));
         }
     } else {
         lines.push(Line::from(Span::styled("No file selected.", t.dim_s())));
     }
-    f.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }).block(panel(t, "Details", false)), a);
+    f.render_widget(
+        Paragraph::new(lines)
+            .wrap(Wrap { trim: false })
+            .block(panel(t, "Details", false)),
+        a,
+    );
 }
 
 fn centered(a: Rect, w: u16, h: u16) -> Rect {
     let w = w.min(a.width);
     let h = h.min(a.height);
-    Rect { x: a.x + (a.width - w) / 2, y: a.y + (a.height - h) / 2, width: w, height: h }
+    Rect {
+        x: a.x + (a.width - w) / 2,
+        y: a.y + (a.height - h) / 2,
+        width: w,
+        height: h,
+    }
 }
 
 fn draw_modal(f: &mut Frame, area: Rect, app: &App, t: &Theme) {
@@ -800,10 +839,23 @@ fn draw_modal(f: &mut Frame, area: Rect, app: &App, t: &Theme) {
             let r = centered(area, 72, 22);
             f.render_widget(Clear, r);
             let rows = [
-                ("Tab / Shift+Tab", "next / previous section"), ("1-9", "jump to section"), ("↑ ↓  j k  PgUp PgDn", "move selection"), ("← →  h l", "switch pane (Inspect)"),
-                ("/", "search files or fields"), ("Enter / Space", "expand or collapse group, open"), ("s", "sort files / cycle source filter"), ("y", "copy selected value (OSC 52)"),
-                ("m then c", "mark a file, compare with another"), ("e", "edit selected file (writes a new copy)"), ("x", "export selected file as JSON"), ("r", "reveal / hide personal & location values"),
-                ("T", "cycle theme"), ("d", "toggle details panel"), ("Esc", "cancel / back / clear filter"), ("Ctrl+C", "cancel running scan (twice when idle quits)"), ("q", "quit"),
+                ("Tab / Shift+Tab", "next / previous section"),
+                ("1-9", "jump to section"),
+                ("↑ ↓  j k  PgUp PgDn", "move selection"),
+                ("← →  h l", "switch pane (Inspect)"),
+                ("/", "search files or fields"),
+                ("Enter / Space", "expand or collapse group, open"),
+                ("s", "sort files / cycle source filter"),
+                ("y", "copy selected value (OSC 52)"),
+                ("m then c", "mark a file, compare with another"),
+                ("e", "edit selected file (writes a new copy)"),
+                ("x", "export selected file as JSON"),
+                ("r", "reveal / hide personal & location values"),
+                ("T", "cycle theme"),
+                ("d", "toggle details panel"),
+                ("Esc", "cancel / back / clear filter"),
+                ("Ctrl+C", "cancel running scan (twice when idle quits)"),
+                ("q", "quit"),
             ];
             let mut lines: Vec<Line> = rows.iter().map(|(k, d)| Line::from(vec![Span::styled(format!("{k:<22}"), t.accent_s()), Span::raw(*d)])).collect();
             lines.push(Line::from(""));
