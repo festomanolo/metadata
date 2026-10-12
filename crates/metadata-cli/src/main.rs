@@ -151,7 +151,7 @@ pub(crate) fn engine_for(ctx: &Ctx, c: &Common) -> Engine {
     })
 }
 
-fn scan_opts(ctx: &Ctx, c: &Common) -> ScanOptions {
+pub(crate) fn scan_opts(ctx: &Ctx, c: &Common) -> ScanOptions {
     let mut s = ScanOptions {
         recursive: c.recursive,
         ..Default::default()
