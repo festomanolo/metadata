@@ -21,8 +21,8 @@ use std::sync::Arc;
 const EXIT_FAIL: i32 = 1;
 const EXIT_PARTIAL: i32 = 3;
 
-struct Ctx {
-    cfg: config::Config,
+pub(crate) struct Ctx {
+    pub(crate) cfg: config::Config,
     style: Style,
     cancel: Arc<AtomicBool>,
 }
