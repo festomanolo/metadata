@@ -298,15 +298,36 @@ fn previous_submission_comparison() {
     let old = tempfile::tempdir().unwrap();
     let new = tempfile::tempdir().unwrap();
     put(old.path(), "keep.txt", b"same");
-    put(old.path(), "chg.docx", &docx("2024-01-12T09:00:00Z", "2024-02-01T09:00:00Z"));
+    put(
+        old.path(),
+        "chg.docx",
+        &docx("2024-01-12T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
     put(new.path(), "keep.txt", b"same");
     // same path, new content, different created, modified went backwards
-    put(new.path(), "chg.docx", &docx("2024-03-01T09:00:00Z", "2024-01-15T09:00:00Z"));
+    put(
+        new.path(),
+        "chg.docx",
+        &docx("2024-03-01T09:00:00Z", "2024-01-15T09:00:00Z"),
+    );
     put(new.path(), "added.txt", b"new");
     let (ro, rn) = (scan(old.path()), scan(new.path()));
-    let a = run_with(new.path(), &rn, &Claims::default(), "2024-06-02T00:00:00Z", None, Some((old.path(), &ro)));
+    let a = run_with(
+        new.path(),
+        &rn,
+        &Claims::default(),
+        "2024-06-02T00:00:00Z",
+        None,
+        Some((old.path(), &ro)),
+    );
     let diff = a.findings.iter().find(|f| f.rule == "SUB-DIFF").unwrap();
-    assert!(diff.title.contains("1 added") && diff.title.contains("1 changed") && diff.title.contains("1 identical"), "{}", diff.title);
+    assert!(
+        diff.title.contains("1 added")
+            && diff.title.contains("1 changed")
+            && diff.title.contains("1 identical"),
+        "{}",
+        diff.title
+    );
     assert!(rules(&a).contains(&"SUB-CREATED-CHANGED"));
     assert!(rules(&a).contains(&"SUB-MODIFIED-BACKWARDS"));
 }
@@ -326,9 +347,18 @@ fn integrity_check_detects_modification() {
 #[test]
 fn assessment_never_modifies_inputs() {
     let d = tempfile::tempdir().unwrap();
-    put(d.path(), "a.docx", &docx("2023-01-01T09:00:00Z", "2024-02-01T09:00:00Z"));
+    put(
+        d.path(),
+        "a.docx",
+        &docx("2023-01-01T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
     let r = scan(d.path());
-    let _ = run(d.path(), &r, &claims("2024-01-10", "2024-06-01"), "2024-06-02T00:00:00Z");
+    let _ = run(
+        d.path(),
+        &r,
+        &claims("2024-01-10", "2024-06-01"),
+        "2024-06-02T00:00:00Z",
+    );
     assert!(verify_unchanged(d.path(), &r).unchanged);
 }
 
