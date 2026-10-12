@@ -1,0 +1,20 @@
+[package]
+name = "metadata-edit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+metadata-core = { path = "../metadata-core" }
+metadata-engine = { path = "../metadata-engine" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+zip = "4"
+lopdf = "0.36"
+flate2 = "1"
+tempfile = "3"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+
+[dev-dependencies]
+metadata-testkit = { path = "../metadata-testkit" }
