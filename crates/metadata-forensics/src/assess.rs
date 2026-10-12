@@ -240,7 +240,10 @@ pub fn assess(input: &Input) -> Assessment {
     let th = input.thresholds;
     let start = claims.start.as_deref().and_then(|s| parse_claim(s).ok());
     let deadline = claims.deadline.as_deref().and_then(|s| parse_claim(s).ok());
-    let completion = claims.completion.as_deref().and_then(|s| parse_claim(s).ok());
+    let completion = claims
+        .completion
+        .as_deref()
+        .and_then(|s| parse_claim(s).ok());
     let now = t(&input.now);
 
     rule_future(&mut c, &embedded, &now);
@@ -272,7 +275,12 @@ pub fn assess(input: &Input) -> Assessment {
     }
 
     let mut findings = c.out;
-    findings.sort_by(|a, b| b.severity.cmp(&a.severity).then(b.review_priority.cmp(&a.review_priority)).then(a.id.cmp(&b.id)));
+    findings.sort_by(|a, b| {
+        b.severity
+            .cmp(&a.severity)
+            .then(b.review_priority.cmp(&a.review_priority))
+            .then(a.id.cmp(&b.id))
+    });
     findings.dedup_by(|a, b| a.id == b.id);
 
     let inventory = input
@@ -287,8 +295,16 @@ pub fn assess(input: &Input) -> Assessment {
             fs_created: r.filesystem.created.clone(),
             fs_modified: r.filesystem.modified.clone(),
             fields: r.fields.len(),
-            warnings: r.warnings.iter().map(|w| format!("[{}] {}", w.backend, w.message)).collect(),
-            backends: r.backends.iter().map(|b| format!("{} {}", b.name, b.version)).collect(),
+            warnings: r
+                .warnings
+                .iter()
+                .map(|w| format!("[{}] {}", w.backend, w.message))
+                .collect(),
+            backends: r
+                .backends
+                .iter()
+                .map(|b| format!("{} {}", b.name, b.version))
+                .collect(),
             error: r.error.clone(),
         })
         .collect();
@@ -381,7 +397,8 @@ fn rule_before_start(c: &mut Ctx, emb: &[&Event], s: &DayRange) {
     for e in emb.iter().filter(|e| e.role == Role::Created) {
         let Some(x) = t(&e.time) else { continue };
         if x.secs + tol(x.exact, claim_exact(s), c.i.thresholds) < s.start {
-            let image = cat_of(c.i.reports, c.i.root, &e.file).is_some_and(|r| r.format.category == Category::Image);
+            let image = cat_of(c.i.reports, c.i.root, &e.file)
+                .is_some_and(|r| r.format.category == Category::Image);
             c.push(Draft {
                 rule: "TS-BEFORE-START",
                 title: "Creation timestamp is earlier than the claimed project start".into(),
@@ -402,13 +419,19 @@ fn rule_before_start(c: &mut Ctx, emb: &[&Event], s: &DayRange) {
 fn rule_after(c: &mut Ctx, emb: &[&Event], d: &DayRange, label: &str, now: &Option<T>) {
     for e in emb {
         let Some(x) = t(&e.time) else { continue };
-        if now.as_ref().is_some_and(|n| x.secs > n.secs + tol(x.exact, true, c.i.thresholds)) {
+        if now
+            .as_ref()
+            .is_some_and(|n| x.secs > n.secs + tol(x.exact, true, c.i.thresholds))
+        {
             continue; // reported as TS-FUTURE
         }
         if x.secs - tol(x.exact, claim_exact(d), c.i.thresholds) > d.end {
             let media = e.field.contains("creation_time") || e.field.contains("Tags");
             let (rule, title) = if media {
-                ("TS-MEDIA-AFTER", format!("Media container timestamp is later than the {label}"))
+                (
+                    "TS-MEDIA-AFTER",
+                    format!("Media container timestamp is later than the {label}"),
+                )
             } else {
                 ("TS-AFTER", format!("Embedded timestamp is later than the {label}"))
             };
