@@ -19,7 +19,7 @@ academic misconduct and contains no verdict or probability of misconduct. Metada
 exporting, synchronization, extraction or editing, and can be deliberately altered. Findings should be weighed with other evidence \
 and the student should have an opportunity to respond.";
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
     #[serde(rename = "INFO")]
     Info,
@@ -29,7 +29,7 @@ pub enum Severity {
     HighPriority,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Confidence {
     Low,
