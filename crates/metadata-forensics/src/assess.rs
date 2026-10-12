@@ -9,7 +9,7 @@ use crate::project::ProjectSummary;
 use crate::timeline::{self, rel, Event, Role, Source};
 use metadata_core::hash::{sha256_bytes, sha256_file};
 use metadata_core::{Category, ExtensionMatch, FileReport, TimeValue};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -19,7 +19,7 @@ academic misconduct and contains no verdict or probability of misconduct. Metada
 exporting, synchronization, extraction or editing, and can be deliberately altered. Findings should be weighed with other evidence \
 and the student should have an opportunity to respond.";
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
     #[serde(rename = "INFO")]
     Info,
@@ -29,7 +29,7 @@ pub enum Severity {
     HighPriority,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Confidence {
     Low,
@@ -37,7 +37,7 @@ pub enum Confidence {
     High,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Evidence {
     pub file: String,
     pub field: String,
@@ -45,7 +45,7 @@ pub struct Evidence {
     pub source: Source,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Finding {
     /// Stable across runs for the same rule + evidence (paths relative to the analysis root).
     pub id: String,
@@ -65,7 +65,7 @@ pub struct Finding {
     pub follow_up: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InventoryItem {
     pub path: String,
     pub size: u64,
@@ -80,7 +80,7 @@ pub struct InventoryItem {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Integrity {
     pub files_rehashed: usize,
     pub unchanged: bool,
@@ -88,7 +88,7 @@ pub struct Integrity {
     pub note: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Assessment {
     pub schema: String,
     pub tool: String,
@@ -102,6 +102,9 @@ pub struct Assessment {
     pub git_commits: Option<usize>,
     pub findings: Vec<Finding>,
     pub integrity: Option<Integrity>,
+    /// True once `redact()` has masked personal identifiers in evidence values.
+    #[serde(default)]
+    pub personal_data_redacted: bool,
     pub checks_not_implemented: Vec<String>,
     pub limitations: Vec<String>,
     pub disclaimer: String,
@@ -321,6 +324,7 @@ pub fn assess(input: &Input) -> Assessment {
         git_commits: input.git.map(|g| g.commits.len()),
         findings,
         integrity: None,
+        personal_data_redacted: false,
         checks_not_implemented: vec![
             "Consistency between source code, documentation, screenshots and project structure (planned; requires content analysis)".into(),
         ],
@@ -359,6 +363,7 @@ pub fn verify_unchanged(root: &Path, reports: &[FileReport]) -> Integrity {
 
 /// Mask personal identifiers in evidence values (author names etc.).
 pub fn redact(a: &mut Assessment) {
+    a.personal_data_redacted = true;
     for f in &mut a.findings {
         for e in &mut f.evidence {
             let name = e.field.rsplit(':').next().unwrap_or("");
@@ -1181,4 +1186,40 @@ fn rule_previous(c: &mut Ctx, proot: &Path, prev: &[FileReport]) {
             }
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FindingStatus {
+    Open,
+    Reviewed,
+    Dismissed,
+}
+
+impl FindingStatus {
+    pub fn parse(s: &str) -> Option<FindingStatus> {
+        match s {
+            "open" => Some(FindingStatus::Open),
+            "reviewed" => Some(FindingStatus::Reviewed),
+            "dismissed" => Some(FindingStatus::Dismissed),
+            _ => None,
+        }
+    }
+    pub fn as_str(self) -> &'static str {
+        match self {
+            FindingStatus::Open => "open",
+            FindingStatus::Reviewed => "reviewed",
+            FindingStatus::Dismissed => "dismissed",
+        }
+    }
+}
+
+/// Reviewer disposition of a finding (kept in the case database, never in the evidence).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FindingState {
+    pub status: FindingStatus,
+    pub note: Option<String>,
+    /// Required when dismissed.
+    pub reason: Option<String>,
+    pub updated_at: String,
 }

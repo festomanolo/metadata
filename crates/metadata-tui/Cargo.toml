@@ -1,0 +1,18 @@
+[package]
+name = "metadata-tui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+metadata-core = { path = "../metadata-core" }
+metadata-engine = { path = "../metadata-engine" }
+metadata-forensics = { path = "../metadata-forensics" }
+metadata-edit = { path = "../metadata-edit" }
+ratatui = "0.30"
+serde_json = "1"
+
+[dev-dependencies]
+metadata-testkit = { path = "../metadata-testkit" }
+tempfile = "3"

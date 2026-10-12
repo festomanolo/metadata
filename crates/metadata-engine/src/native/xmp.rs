@@ -2,6 +2,22 @@
 use quick_xml::events::Event;
 use quick_xml::Reader;
 
+/// Resolve a quick-xml general reference (`amp`, `lt`, `#38`, `#x26`) to its character.
+pub fn entity_char(name: &str) -> Option<char> {
+    match name {
+        "amp" => Some('&'),
+        "lt" => Some('<'),
+        "gt" => Some('>'),
+        "quot" => Some('"'),
+        "apos" => Some('\''),
+        n if n.starts_with("#x") || n.starts_with("#X") => u32::from_str_radix(&n[2..], 16)
+            .ok()
+            .and_then(char::from_u32),
+        n if n.starts_with('#') => n[1..].parse::<u32>().ok().and_then(char::from_u32),
+        _ => None,
+    }
+}
+
 pub fn parse(xml: &str) -> Vec<(String, String)> {
     let mut out = Vec::new();
     let mut r = Reader::from_str(xml);
@@ -28,6 +44,11 @@ pub fn parse(xml: &str) -> Vec<(String, String)> {
             Ok(Event::Text(t)) => {
                 if let Ok(s) = t.decode() {
                     text.push_str(&s);
+                }
+            }
+            Ok(Event::GeneralRef(r)) => {
+                if let Some(c) = r.decode().ok().and_then(|n| entity_char(&n)) {
+                    text.push(c);
                 }
             }
             Ok(Event::End(_)) => {

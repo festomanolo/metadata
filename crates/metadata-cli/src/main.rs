@@ -1,5 +1,8 @@
 mod args;
+mod cache;
+mod case_cmd;
 mod config;
+mod edit_cmd;
 mod forensic;
 mod render;
 
@@ -122,6 +125,7 @@ fn run(cli: Cli) -> Result<i32> {
             previous,
             no_git,
             include_personal,
+            html,
             min_severity,
             c,
         } => forensic::cmd_assess(
@@ -138,10 +142,72 @@ fn run(cli: Cli) -> Result<i32> {
                 previous,
                 no_git,
                 include_personal,
+                html,
                 min_severity,
             },
             &c,
         ),
+        Cmd::Case { db, cmd } => case_cmd::cmd_case(&ctx, db, cmd),
+        Cmd::Edit {
+            paths,
+            set,
+            remove,
+            copy_from,
+            interactive,
+            w,
+            c,
+        } => edit_cmd::cmd_edit(
+            &ctx,
+            &paths,
+            edit_cmd::EditArgs {
+                set,
+                remove,
+                copy_from,
+                interactive,
+                profile: None,
+            },
+            &w,
+            &c,
+        ),
+        Cmd::Clean {
+            paths,
+            profile,
+            w,
+            c,
+        } => edit_cmd::cmd_edit(
+            &ctx,
+            &paths,
+            edit_cmd::EditArgs {
+                profile: Some(profile),
+                ..Default::default()
+            },
+            &w,
+            &c,
+        ),
+        Cmd::Tui {
+            path,
+            no_scan,
+            no_external,
+        } => {
+            if !std::io::stdout().is_terminal() || !std::io::stdin().is_terminal() {
+                bail!("`metadata tui` needs an interactive terminal; use inspect/extract for scripted output");
+            }
+            let root = path.unwrap_or_else(|| PathBuf::from("."));
+            let root = if root.is_file() {
+                root.parent()
+                    .map(Path::to_path_buf)
+                    .unwrap_or_else(|| PathBuf::from("."))
+            } else {
+                root
+            };
+            let root = root.canonicalize().unwrap_or(root);
+            metadata_tui::run(
+                root,
+                !no_scan,
+                !no_external && ctx.cfg.use_external.unwrap_or(true),
+            )?;
+            Ok(0)
+        }
         Cmd::Capabilities { format } => cmd_caps(&ctx, format),
         Cmd::Doctor { format } => cmd_doctor(&ctx, format),
         Cmd::Config { path, init } => cmd_config(&ctx, path, init),
@@ -230,8 +296,13 @@ pub(crate) fn scan(ctx: &Ctx, engine: &Engine, paths: &[PathBuf], c: &Common) ->
         )
         .unwrap(),
     );
-    let mut reports =
-        engine.inspect_many(&col.files, so.jobs, &|done, _| pb.set_position(done as u64));
+    let mut reports = if c.cache {
+        cache::inspect_many_cached(engine, &col.files, so.jobs, &|done, _| {
+            pb.set_position(done as u64)
+        })
+    } else {
+        engine.inspect_many(&col.files, so.jobs, &|done, _| pb.set_position(done as u64))
+    };
     pb.finish_and_clear();
     if ctx.cancel.load(Ordering::Relaxed) {
         eprintln!(
@@ -817,7 +888,7 @@ fn cmd_caps(ctx: &Ctx, format: Option<Fmt>) -> Result<i32> {
                     st.dim(f.notes)
                 );
             }
-            println!("\n{}", st.dim("Write support is listed only for format/backend pairs verified by round-trip tests (none yet: metadata editing is PLANNED)."));
+            println!("\n{}", st.dim("Write support is listed only for verified format/backend pairs. exiftool* = passes through verify-after-write but is not covered by tests against a real exiftool."));
         }
     }
     Ok(0)

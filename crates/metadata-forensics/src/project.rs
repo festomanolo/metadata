@@ -1,9 +1,9 @@
 //! Lightweight source-project summary: manifests, languages, docs. Never executes anything.
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ProjectSummary {
     pub manifests: Vec<String>,
     pub languages: BTreeMap<String, usize>,

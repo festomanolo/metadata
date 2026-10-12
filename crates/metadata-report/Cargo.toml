@@ -1,0 +1,13 @@
+[package]
+name = "metadata-report"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+metadata-core = { path = "../metadata-core" }
+metadata-forensics = { path = "../metadata-forensics" }
+
+[dev-dependencies]
+metadata-testkit = { path = "../metadata-testkit" }

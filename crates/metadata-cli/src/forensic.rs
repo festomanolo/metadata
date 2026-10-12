@@ -79,7 +79,11 @@ fn scan_project(ctx: &Ctx, c: &Common, root: &Path) -> Result<(Vec<FileReport>, 
         eprintln!("skipped {}: {r}", p.display());
     }
     let engine = engine_for(ctx, &cc);
-    let reports = engine.inspect_many(&col.files, so.jobs, &|_, _| {});
+    let reports = if c.cache {
+        crate::cache::inspect_many_cached(&engine, &col.files, so.jobs, &|_, _| {})
+    } else {
+        engine.inspect_many(&col.files, so.jobs, &|_, _| {})
+    };
     Ok((reports, col.files))
 }
 
@@ -253,6 +257,7 @@ fn csv(s: &str) -> String {
 }
 
 pub struct AssessArgs {
+    pub html: Option<PathBuf>,
     pub path: PathBuf,
     pub case: String,
     pub student: Option<String>,
@@ -294,30 +299,32 @@ pub fn cmd_assess(ctx: &Ctx, a: AssessArgs, c: &Common) -> Result<i32> {
     }
     cf.claims.validate()?;
     let th = cf.thresholds.clone().unwrap_or_default();
-    let root = root_of(&a.path);
-    let (reports, files) = scan_project(ctx, c, &root)?;
-    if ctx.cancel.load(Ordering::Relaxed) {
-        bail!("cancelled");
-    }
     let prev = match &a.previous {
         Some(p) => Some((p.clone(), scan_project(ctx, c, p)?.0)),
         None => None,
     };
-    let g = read_git(&root, a.no_git, &th);
-    let mut result = assess::assess(&assess::Input {
-        case_id: &a.case,
-        root: &root,
-        reports: &reports,
-        claims: &cf.claims,
-        thresholds: &th,
-        git: g.as_ref(),
-        previous: prev.as_ref().map(|(p, r)| (p.as_path(), r.as_slice())),
-        project: project::summarize(&root, &files),
-        now: time::TimeValue::from_system(std::time::SystemTime::now()),
-    });
-    result.integrity = Some(assess::verify_unchanged(&root, &reports));
-    if !a.include_personal {
-        assess::redact(&mut result);
+    let done = run_assessment(
+        ctx,
+        c,
+        &a.case,
+        &a.path,
+        &cf.claims,
+        &th,
+        prev,
+        a.no_git,
+        a.include_personal,
+    )?;
+    let mut result = done.assessment;
+    if let Some(h) = &a.html {
+        let html = metadata_report::html(&metadata_report::ReportInput {
+            assessment: &result,
+            events: &done.events,
+            states: &Default::default(),
+            notes: &[],
+            title: None,
+            include_timeline: true,
+        });
+        crate::write_output(h, &html, c.force)?;
     }
     let min = match a.min_severity.as_str() {
         "high" => Severity::HighPriority,
@@ -432,4 +439,91 @@ fn human_assessment(a: &assess::Assessment, st: Style) -> String {
     }
     o.push_str(&format!("\n{}\n", st.dim(&a.disclaimer)));
     o
+}
+
+pub struct Assessed {
+    pub assessment: assess::Assessment,
+    pub reports: Vec<FileReport>,
+    pub events: Vec<timeline::Event>,
+}
+
+/// Scan a project folder and produce the full assessment (shared by `assess` and `case add`).
+#[allow(clippy::too_many_arguments)]
+pub fn run_assessment(
+    ctx: &Ctx,
+    c: &Common,
+    case: &str,
+    path: &Path,
+    claims: &Claims,
+    th: &Thresholds,
+    previous: Option<(PathBuf, Vec<FileReport>)>,
+    no_git: bool,
+    include_personal: bool,
+) -> Result<Assessed> {
+    if !path.exists() {
+        bail!("{} does not exist", path.display());
+    }
+    let root = root_of(path);
+    let (reports, files) = scan_project(ctx, c, &root)?;
+    if ctx.cancel.load(Ordering::Relaxed) {
+        bail!("cancelled");
+    }
+    let g = read_git(&root, no_git, th);
+    let now = time::TimeValue::from_system(std::time::SystemTime::now());
+    let mut assessment = assess::assess(&assess::Input {
+        case_id: case,
+        root: &root,
+        reports: &reports,
+        claims,
+        thresholds: th,
+        git: g.as_ref(),
+        previous: previous.as_ref().map(|(p, r)| (p.as_path(), r.as_slice())),
+        project: project::summarize(&root, &files),
+        now,
+    });
+    assessment.integrity = Some(assess::verify_unchanged(&root, &reports));
+    if !include_personal {
+        assess::redact(&mut assessment);
+    }
+    let mut events = timeline::build(&root, &reports, g.as_ref(), None, Some(claims));
+    if !include_personal {
+        for e in &mut events {
+            if metadata_core::is_sensitive_name(e.field.rsplit(':').next().unwrap_or("")) {
+                e.value = crate::render::REDACTED.into();
+            }
+        }
+    }
+    Ok(Assessed {
+        assessment,
+        reports,
+        events,
+    })
+}
+
+pub fn build_claims(
+    c: Option<&Path>,
+    student: &Option<String>,
+    start: &Option<String>,
+    completion: &Option<String>,
+    deadline: &Option<String>,
+    milestones: &[String],
+) -> Result<(Claims, Thresholds)> {
+    let mut cf = c.map(load_claims).transpose()?.unwrap_or_default();
+    if student.is_some() {
+        cf.claims.student = student.clone();
+    }
+    if start.is_some() {
+        cf.claims.start = start.clone();
+    }
+    if completion.is_some() {
+        cf.claims.completion = completion.clone();
+    }
+    if deadline.is_some() {
+        cf.claims.deadline = deadline.clone();
+    }
+    for m in milestones {
+        cf.claims.milestones.push(parse_milestone(m)?);
+    }
+    cf.claims.validate()?;
+    Ok((cf.claims, cf.thresholds.unwrap_or_default()))
 }

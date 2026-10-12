@@ -6,8 +6,8 @@ Rule: after adding/changing/removing a feature, file, public API, or dependency,
 - Toolchain: `export PATH=$HOME/.cargo/bin:$PATH` (cargo/rustc 1.99; MSRV set to 1.82). Not on default PATH; PATH does not persist between Bash calls.
 - Backends on dev machine: exiftool NO, ffprobe NO, 7z NO, tika NO → tests use native paths only (`use_external:false`); adapters tested via JSON-parse unit tests.
 - First build is slow (~3 min); run long cargo commands with a 600000 ms timeout.
-- Check: `cargo fmt --all && cargo clippy --workspace --all-targets && cargo test --workspace` (all green; ~80 tests).
-- Last updated: 2026-10-12 — M1 foundation + most of M2 + manifest/compare done.
+- Check: `cargo fmt --all && cargo clippy --workspace --all-targets && cargo test --workspace` (all green; 122 tests).
+- Last updated: 2026-10-12 — All milestones M1–M7 implemented; 122 tests green. Remaining: items under Next steps.
 
 ## Feature status
 Legend: DONE (works + tested) · PARTIAL · PLANNED
@@ -25,16 +25,19 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 | Extraction | PDF: Info dict, XMP, revisions, sig/JS/launch/embedded indicators | DONE | `native/pdf.rs` (lopdf) |
 | Extraction | Archives: zip/tar/tgz/gzip listing, traversal/symlink/ratio/entry limits, nested (--deep) | DONE | never extracts to disk |
 | Extraction | Text/source/HTML/XML/CSV/JSON/RTF | DONE | `native/text.rs` |
-| Extraction | ExifTool adapter (read) | PARTIAL | code + JSON-parse tests; not run against real exiftool (not installed) |
+| Extraction | ExifTool adapter (read) | PARTIAL | JSON-parse unit tests + stub-script tests (`metadata-edit/tests/exiftool_stub.rs`); never run against real exiftool |
 | Extraction | FFprobe adapter (read) | PARTIAL | same as above |
 | Extraction | Legacy OLE2 doc/xls/ppt, 7z/rar listing, video/audio w/o tools | PLANNED | reported as `unavailable`, not faked |
 | Extraction | Source-project inspection (manifests, git history) | PLANNED | for directories; needs git subprocess |
 | Commands | inspect, extract, batch, search, compare (file+dir), hash, verify-manifest, capabilities, doctor, config | DONE | integration-tested |
 | Commands | timeline (sources separate; --source, --no-git, --manifest intake, --claims) | DONE | `cli/forensic.rs` |
 | Commands | assess (claims flags/file, --previous, git, redaction default, integrity re-hash, --min-severity) | DONE | JSON+human; HTML PLANNED (M6) |
-| Commands | edit, clean | PLANNED | M4 (no write support is claimed anywhere until verified) |
+| Commands | edit (--set/--remove/--copy-from/--interactive/--dry-run/--in-place/--output-dir/--yes/--accept-signature-loss), clean (--profile privacy/all/gps) | DONE | `cli/edit_cmd.rs`; new copy by default `<stem>.edited.<ext>`, in-place needs --yes + backup `.metadata-backup-<ts>`, ops log `<config dir>/operations.jsonl` |
+| Editing | Native writers: docx/xlsx/pptx core+app props, odt/ods/odp meta, PDF Info (file rewritten), PNG text chunks, JPEG comment + strip | DONE | round-trip verified in `metadata-edit/tests/edit.rs` |
+| Editing | ExifTool write backend | PARTIAL | safe argv + stub-script end-to-end tests; NOT run against real exiftool; listed as `exiftool*` in capabilities |
+| Editing | JPEG/TIFF/etc. individual EXIF/IPTC/XMP tag edit, GPS-only removal | PLANNED | needs exiftool |
 | Commands | assess, cases, reports | PLANNED | M5/M6 |
-| Commands | tui | PLANNED | M3 |
+| Commands | tui [PATH] [--no-scan] [--no-external] | DONE | needs a TTY (errors otherwise); pty smoke-tested |
 | Forensics | Evidence manifest (versioned, entries digest, verify, traversal-safe) | DONE | `forensics/manifest.rs` |
 | Forensics | Field-level compare | DONE | `forensics/compare.rs` |
 | Forensics | Timeline, git history reader, project summary, assessment rules | DONE | `forensics/{timeline,git,project,claims,assess}.rs`; rules: TS-FUTURE, TS-BEFORE-START, TS-AFTER, TS-MEDIA-AFTER, TS-MOD-BEFORE-CREATE, MS-LATE-CREATION, UNI-FS, UNI-EMBEDDED, FMT-EXT-MISMATCH, DUP-CONTENT, MISS-METADATA, INC-PRESENT/ABSENT, GIT-{BEFORE-START,LATE-START,AFTER-DEADLINE,FUTURE,NONMONOTONIC,AUTHOR-COMMIT-SKEW}, GAP-HISTORY, SUB-DIFF, DUP-PREVIOUS, SUB-CREATED-CHANGED, SUB-MODIFIED-BACKWARDS |
@@ -42,12 +45,14 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 | Output | JSON envelope (schema 1.0.0), CSV (formula-injection guarded), human, redaction | DONE | |
 | Perf | Bounded rayon pool, cancellation (Ctrl+C), progress bar (TTY only) | DONE | benchmarks PLANNED; caching/index PLANNED |
 | Security | No shell, timeout+output cap for subprocesses, panic isolation per parser, symlinks not followed | DONE | |
-| Reports | HTML/CSV/JSON assessment reports | PLANNED | |
-| Storage | SQLite cases/cache | PLANNED | |
-| Docs | README, CLI ref, format matrix, safety/methodology guides | PLANNED | PLAN/ARCHITECTURE/ROADMAP exist (short) |
+| Reports | HTML (escaped, self-contained, printable)/CSV/JSON assessment reports | DONE | `metadata-report`; `assess --html`, `case report --html/--csv -f json` |
+| Storage | SQLite cases (schema v1: cases, submissions, finding states, notes) + content-hash cache | DONE | `metadata-storage`; `case new/list/show/add/finding/note/report/diff`; `--cache` on scans (cache.sqlite in config dir) |
+| Docs | README, docs/{CLI,FORMATS,EDITING-SAFETY,ASSESSMENT}.md, ARCHITECTURE, ROADMAP, CHANGELOG, LICENSE | DONE | docs/CLI.md is generated from `--help` (regenerate when commands change) |
+| Perf | Benchmark `cargo bench -p metadata-engine --bench scan` | DONE | measured 3.3–5.4× at 8 jobs on 2000 files (README table) |
+| Security | cargo-audit | NOT RUN | install attempt hung on registry lock and was killed; run `cargo install cargo-audit && cargo audit` later |
 
 ## Crate / file map
-- `Cargo.toml` workspace (members: core, engine, forensics, cli, testkit). `.gitignore`, `CLAUDE.md` (points here).
+- `Cargo.toml` workspace (members: core, engine, forensics, cli, testkit). `.gitignore`.
 - `crates/metadata-core` — types only, no I/O policy
   - `schema.rs`: `SCHEMA_VERSION`, `Field{group,name,raw,normalized,time,backend,provenance,writable,sensitive}` (`Field::new/.with_time/.with_normalized/.key()`), `FileReport` (`.find("Group:Name"|"Name")`), `FormatInfo`, `Category`, `ExtensionMatch`, `FsInfo`, `Warning`, `BackendUsed`, `is_sensitive_name()`
   - `time.rs`: `TimeValue{iso,offset_known,utc}` (+`.sort_key()`), `parse_exif/parse_pdf/parse_iso/parse_any`. Naive times are never treated as UTC.
@@ -62,6 +67,8 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
   - `native/{mod,image,ooxml,pdf,archive,text,xmp}.rs`: native extractors; `mod.rs` dispatches + `catch_unwind`
 - `crates/metadata-forensics`: `claims.rs` (Claims, Milestone, Thresholds, parse_claim day-ranges), `git.rs` (read_history, hardened git subprocess), `timeline.rs` (Source, Role, Event, build), `project.rs`, `assess.rs` (assess, verify_unchanged, redact, Finding), `manifest.rs` (`create/load/verify`, `Manifest`, `VerifyReport`), `compare.rs` (`compare_reports`, `compare_sets`, `DiffStatus`)
 - `crates/metadata-cli` (binary `metadata`): `args.rs` (clap), `config.rs`, `render.rs` (json_envelope, csv_fields, human_report, redact, Style), `main.rs` (all command handlers `cmd_*`, `scan()`, `emit()`, `write_output()`); tests in `tests/cli.rs` (assert_cmd)
+- `crates/metadata-edit`: `lib.rs` (`plan`, `execute`, `Plan`, `Change`, `EditRequest/Op/Profile`, `ApplyOpts{backup,replace_original,allow_signature_loss,force,log_path}`, `EditOutcome`, verification + unexpected_changes), `exiftool.rs` (build_args/run), `native/{office,pdf,png,jpeg,zipedit,xmlprops}.rs` (`keys`, `resolve_key`, `write`, `has_signature`). Pipeline: temp file in dest dir → re-extract/verify → backup → atomic persist → log.
+- `crates/metadata-tui`: `App` (sections, focus, scan thread via mpsc, filters, edit/compare state), `ui::draw`, `theme::Theme`, `run()`. Keys documented in the in-app help (`?`). Edits from TUI never in-place, never accept signature loss.
 - `crates/metadata-testkit` (dev-only): `jpeg(&ExifSpec,..)`, `png`, `docx(&DocxSpec)`, `odt`, `pdf(..,incremental)`, `zip_with`, `tar_gz`. Use these for all new tests.
 - Tests: `crates/metadata-engine/tests/extract.rs` (19 fixture tests incl. malformed, bombs, cancel, symlinks)
 
@@ -73,15 +80,16 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 - New external parsing must be panic-safe, bounded (Limits), and never execute content.
 
 ## Known issues / decisions log
+- quick-xml 0.41 emits entities (`&amp;`) as `Event::GeneralRef`; readers must handle it (fixed in ooxml.rs/xmp.rs via `xmp::entity_char`). Custom-props reader in ooxml.rs still ignores entities (minor TODO).
 - quick-xml `unescape_value` deprecated; silenced with `#![allow(deprecated)]` in native/mod.rs.
 - `Backends::extract_external` with exiftool dedupes against native fields by (group,name,raw); exiftool group names (EXIF, XMP, PDF…) were chosen to align.
 - Search alias table + "format can hold" table live in `search.rs`; extend when adding fields.
 - Archive entry timestamps (ZIP DOS time) have no timezone → naive `TimeValue`.
 
-## Next steps (in order)
-1. M4: edit/clean (exiftool-backed writes + native-safe pipeline: dry-run, diff, backup, temp+verify+atomic replace, signature warning).
-3. M3: TUI (ratatui+crossterm).
-4. M6: SQLite cases, HTML/CSV/JSON reports. 5. M7: benches, docs (README, CLI ref, format matrix), audit.
-
-- Scans exclude `.git` by default (`--include-vcs`, `--exclude DIR`); assess/timeline also skip node_modules/target/__pycache__/.venv/venv. `hash` uses same scan_opts (so excludes .git too unless --include-vcs).
-- Env note: an external auto-commit/sync process in the user's environment commits to main and a GitHub remote; do not fight it.
+## Next steps (open items)
+1. Run `cargo audit`; add CI (fmt, clippy, test on macOS/Linux/Windows) and test ExifTool/FFprobe paths against real binaries.
+2. Assessment: source/docs/screenshot consistency check (currently listed as not performed).
+3. 7z/RAR listing, Apache Tika adapter, OLE2 native properties, source-project dependency analysis.
+4. TUI: real Cases/Reports tabs (currently point at CLI), persist theme/settings.
+5. Fuzz targets for native parsers; release packaging; Windows terminal verification (only macOS verified).
+6. Custom-props reader in ooxml.rs ignores XML entities (minor).

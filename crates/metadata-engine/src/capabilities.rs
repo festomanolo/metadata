@@ -27,76 +27,85 @@ pub fn matrix(b: &Backends) -> Vec<FormatCap> {
         }
         v
     };
-    let w = |_exif: bool| -> Vec<&'static str> { vec![] }; // write support is claimed only once editing is implemented+verified (M4)
+    let w = |native: bool, exif: bool| -> Vec<&'static str> {
+        let mut v = vec![];
+        if native {
+            v.push("native");
+        }
+        if exif && ex {
+            v.push("exiftool*");
+        }
+        v
+    };
     vec![
         FormatCap {
             format: "JPEG",
             category: "image",
             read: r(true, true, false),
-            write: w(true),
-            notes: "native: EXIF, IPTC, XMP, ICC, JFIF, comments",
+            write: w(true, true),
+            notes: "native read: EXIF, IPTC, XMP, ICC, JFIF, comments; native write: comment + metadata strip only (field edits need exiftool)",
         },
         FormatCap {
             format: "PNG",
             category: "image",
             read: r(true, true, false),
-            write: w(true),
-            notes: "native: text chunks, tIME, XMP, eXIf",
+            write: w(true, true),
+            notes: "native read/write: text chunks (set/remove/strip)",
         },
         FormatCap {
             format: "TIFF/RAW",
             category: "image",
             read: r(true, true, false),
-            write: w(true),
+            write: w(false, true),
             notes: "native: EXIF only; RAW maker notes need exiftool",
         },
         FormatCap {
             format: "WebP",
             category: "image",
             read: r(true, true, false),
-            write: w(true),
+            write: w(false, true),
             notes: "native: dimensions + EXIF",
         },
         FormatCap {
             format: "GIF/BMP",
             category: "image",
             read: r(true, true, false),
-            write: w(true),
+            write: w(false, true),
             notes: "native: dimensions/version",
         },
         FormatCap {
             format: "HEIC/HEIF",
             category: "image",
             read: r(true, true, false),
-            write: w(true),
+            write: w(false, true),
             notes: "native: EXIF via container; full coverage needs exiftool",
         },
         FormatCap {
             format: "PDF",
             category: "document",
             read: r(true, true, false),
-            write: w(true),
-            notes: "native: Info dict, XMP, revisions, signatures, JS/embedded-file indicators",
+            write: w(true, true),
+            notes: "native: Info dict read/write (file is rewritten), XMP, revisions, signature/JS indicators",
         },
         FormatCap {
             format: "DOCX/XLSX/PPTX",
             category: "document",
             read: r(true, true, false),
-            write: w(true),
+            write: w(true, true),
             notes: "native: core/app/custom props, comments, tracked changes, macros, signatures",
         },
         FormatCap {
             format: "ODT/ODS/ODP/EPUB",
             category: "document",
             read: r(true, true, false),
-            write: w(true),
-            notes: "native: meta.xml / OPF",
+            write: w(true, true),
+            notes: "native: meta.xml / OPF read; write for ODT/ODS/ODP (not EPUB)",
         },
         FormatCap {
             format: "DOC/XLS/PPT (OLE2)",
             category: "document",
             read: r(false, true, false),
-            write: w(true),
+            write: w(false, true),
             notes: "detected natively; properties need exiftool",
         },
         FormatCap {
@@ -110,14 +119,14 @@ pub fn matrix(b: &Backends) -> Vec<FormatCap> {
             format: "MP4/MOV/MKV/AVI/WebM",
             category: "video",
             read: r(false, true, true),
-            write: w(true),
+            write: w(false, true),
             notes: "requires ffprobe and/or exiftool",
         },
         FormatCap {
             format: "MP3/WAV/FLAC/AAC/M4A/OGG",
             category: "audio",
             read: r(false, true, true),
-            write: w(true),
+            write: w(false, true),
             notes: "requires ffprobe and/or exiftool",
         },
         FormatCap {
