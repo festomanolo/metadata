@@ -226,7 +226,7 @@ pub(crate) fn emit(c: &Common, text: &str) -> Result<()> {
     }
 }
 
-fn write_output(p: &Path, text: &str, force: bool) -> Result<()> {
+pub(crate) fn write_output(p: &Path, text: &str, force: bool) -> Result<()> {
     if p.exists() && !force {
         bail!("{} already exists (use --force to replace)", p.display());
     }
