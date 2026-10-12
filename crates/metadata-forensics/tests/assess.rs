@@ -364,7 +364,10 @@ fn assessment_never_modifies_inputs() {
 
 fn git(dir: &Path, args: &[&str], date: Option<&str>) -> bool {
     let mut c = std::process::Command::new("git");
-    c.args(args).current_dir(dir).env("GIT_CONFIG_GLOBAL", "/dev/null").env("GIT_CONFIG_NOSYSTEM", "1");
+    c.args(args)
+        .current_dir(dir)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_NOSYSTEM", "1");
     if let Some(d) = date {
         c.env("GIT_AUTHOR_DATE", d).env("GIT_COMMITTER_DATE", d);
     }
@@ -373,22 +376,58 @@ fn git(dir: &Path, args: &[&str], date: Option<&str>) -> bool {
 
 #[test]
 fn git_history_rules() {
-    if std::process::Command::new("git").arg("--version").output().is_err() {
+    if std::process::Command::new("git")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
         eprintln!("git missing; skipping");
         return;
     }
     let d = tempfile::tempdir().unwrap();
     let p = d.path();
     assert!(git(p, &["init", "-q"], None));
-    for (i, date) in ["2023-12-01T10:00:00+00:00", "2024-02-01T10:00:00+00:00", "2024-07-01T10:00:00+00:00"].iter().enumerate() {
+    for (i, date) in [
+        "2023-12-01T10:00:00+00:00",
+        "2024-02-01T10:00:00+00:00",
+        "2024-07-01T10:00:00+00:00",
+    ]
+    .iter()
+    .enumerate()
+    {
         put(p, "main.rs", format!("fn main(){{ /*{i}*/ }}").as_bytes());
         assert!(git(p, &["add", "."], None));
-        assert!(git(p, &["-c", "user.name=A", "-c", "user.email=a@x", "commit", "-q", "-m", &format!("c{i}")], Some(date)));
+        assert!(git(
+            p,
+            &[
+                "-c",
+                "user.name=A",
+                "-c",
+                "user.email=a@x",
+                "commit",
+                "-q",
+                "-m",
+                &format!("c{i}")
+            ],
+            Some(date)
+        ));
     }
-    let h = metadata_forensics::git::read_history(p, 100, std::time::Duration::from_secs(20)).unwrap().expect("repo");
+    let h = metadata_forensics::git::read_history(p, 100, std::time::Duration::from_secs(20))
+        .unwrap()
+        .expect("repo");
     assert_eq!(h.commits.len(), 3);
-    let r = scan(p).into_iter().filter(|r| !r.path.contains("/.git/")).collect::<Vec<_>>();
-    let a = run_with(p, &r, &claims("2024-01-10", "2024-06-01"), "2024-08-01T00:00:00Z", Some(&h), None);
+    let r = scan(p)
+        .into_iter()
+        .filter(|r| !r.path.contains("/.git/"))
+        .collect::<Vec<_>>();
+    let a = run_with(
+        p,
+        &r,
+        &claims("2024-01-10", "2024-06-01"),
+        "2024-08-01T00:00:00Z",
+        Some(&h),
+        None,
+    );
     assert!(rules(&a).contains(&"GIT-BEFORE-START"), "{:?}", rules(&a));
     assert!(rules(&a).contains(&"GIT-AFTER-DEADLINE"));
     assert!(rules(&a).contains(&"GAP-HISTORY") || rules(&a).contains(&"INC-PRESENT"));
