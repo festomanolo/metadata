@@ -37,7 +37,7 @@ pub enum Confidence {
     High,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Evidence {
     pub file: String,
     pub field: String,
