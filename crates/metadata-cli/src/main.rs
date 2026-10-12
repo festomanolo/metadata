@@ -211,7 +211,7 @@ pub(crate) fn scan(ctx: &Ctx, engine: &Engine, paths: &[PathBuf], c: &Common) ->
     Ok(Scanned { reports, skipped })
 }
 
-fn emit(c: &Common, text: &str) -> Result<()> {
+pub(crate) fn emit(c: &Common, text: &str) -> Result<()> {
     match &c.output {
         Some(p) => write_output(p, text, c.force),
         None => {
