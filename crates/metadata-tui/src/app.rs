@@ -292,7 +292,11 @@ impl App {
                 ..Default::default()
             };
             let col = collect_files(std::slice::from_ref(&p), &so);
-            let skipped: Vec<(String, String)> = col.skipped.iter().map(|(a, b)| (a.display().to_string(), b.clone())).collect();
+            let skipped: Vec<(String, String)> = col
+                .skipped
+                .iter()
+                .map(|(a, b)| (a.display().to_string(), b.clone()))
+                .collect();
             let _ = tx.send(ScanMsg::Progress(0, col.files.len()));
             let tx2 = tx.clone();
             let reports = engine.inspect_many(&col.files, so.jobs, &move |d, t| {
@@ -302,7 +306,13 @@ impl App {
         });
         self.status = format!("Scanning {} …", path.display());
         self.root = path.clone();
-        self.scan = Some(ScanState { rx, done: 0, total: 0, cancel, root: path });
+        self.scan = Some(ScanState {
+            rx,
+            done: 0,
+            total: 0,
+            cancel,
+            root: path,
+        });
     }
 
     /// Drain background messages; call once per UI tick.
@@ -335,7 +345,11 @@ impl App {
             self.refresh_visible();
             self.file_sel = 0;
             self.mark = None;
-            let msg = if cancelled { format!("Scan cancelled after {n} files") } else { format!("Scan finished: {n} files") };
+            let msg = if cancelled {
+                format!("Scan cancelled after {n} files")
+            } else {
+                format!("Scan finished: {n} files")
+            };
             self.status = msg.clone();
             self.log(msg);
         }
@@ -346,14 +360,28 @@ impl App {
     pub fn refresh_visible(&mut self) {
         let f = self.file_filter.to_ascii_lowercase();
         let mut v: Vec<usize> = (0..self.reports.len())
-            .filter(|&i| f.is_empty() || self.reports[i].path.to_ascii_lowercase().contains(&f) || self.reports[i].format.id.contains(&f))
+            .filter(|&i| {
+                f.is_empty()
+                    || self.reports[i].path.to_ascii_lowercase().contains(&f)
+                    || self.reports[i].format.id.contains(&f)
+            })
             .collect();
         let r = &self.reports;
         match self.sort {
             SortKey::Name => v.sort_by(|&a, &b| r[a].path.cmp(&r[b].path)),
             SortKey::Size => v.sort_by(|&a, &b| r[b].size.cmp(&r[a].size)),
-            SortKey::Format => v.sort_by(|&a, &b| r[a].format.id.cmp(&r[b].format.id).then(r[a].path.cmp(&r[b].path))),
-            SortKey::Warnings => v.sort_by(|&a, &b| r[b].warnings.len().cmp(&r[a].warnings.len()).then(r[a].path.cmp(&r[b].path))),
+            SortKey::Format => v.sort_by(|&a, &b| {
+                r[a].format
+                    .id
+                    .cmp(&r[b].format.id)
+                    .then(r[a].path.cmp(&r[b].path))
+            }),
+            SortKey::Warnings => v.sort_by(|&a, &b| {
+                r[b].warnings
+                    .len()
+                    .cmp(&r[a].warnings.len())
+                    .then(r[a].path.cmp(&r[b].path))
+            }),
         }
         self.visible = v;
         self.file_sel = self.file_sel.min(self.visible.len().saturating_sub(1));
