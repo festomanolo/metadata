@@ -564,3 +564,264 @@ fn assess_reports_findings_without_verdicts_and_redacts() {
     .assert()
     .failure();
 }
+
+#[test]
+fn edit_dry_run_then_write_verified_copy() {
+    let d = tempfile::tempdir().unwrap();
+    let src = put(
+        d.path(),
+        "a.docx",
+        &docx_at("2024-01-12T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
+    let before = std::fs::read(&src).unwrap();
+    md().args(["edit", "--dry-run", "--set", "Creator=Zed"])
+        .arg(&src)
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("\"Ann\" → \"Zed\"").and(predicate::str::contains("dry run")),
+        );
+    assert!(!d.path().join("a.edited.docx").exists());
+    md().args([
+        "edit",
+        "--set",
+        "OOXML-Core:Creator=Zed",
+        "--remove",
+        "LastModifiedBy",
+    ])
+    .arg(&src)
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("verified"));
+    let out = d.path().join("a.edited.docx");
+    assert!(out.exists());
+    assert_eq!(
+        std::fs::read(&src).unwrap(),
+        before,
+        "original unchanged by default"
+    );
+    let v = json(
+        &md()
+            .args(["extract", "--no-external", "--filter", "creator"])
+            .arg(&out)
+            .assert()
+            .success()
+            .get_output()
+            .stdout
+            .clone(),
+    );
+    assert!(v["files"][0]["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|f| f["raw"] == "Zed"));
+    // second run refuses to overwrite the existing edited copy
+    md().args(["edit", "--set", "Title=x"])
+        .arg(&src)
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("--force"));
+}
+
+#[test]
+fn edit_in_place_requires_flag_and_keeps_backup() {
+    let d = tempfile::tempdir().unwrap();
+    let src = put(
+        d.path(),
+        "a.docx",
+        &docx_at("2024-01-12T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
+    let cfg = d.path().join("cfg/config.toml");
+    let run = |args: &[&str]| {
+        Command::cargo_bin("metadata")
+            .unwrap()
+            .env("METADATA_CONFIG", &cfg)
+            .args(args)
+            .arg(&src)
+            .assert()
+    };
+    run(&["edit", "--in-place", "--set", "Title=T"])
+        .code(1)
+        .stderr(predicate::str::contains("--yes"));
+    assert!(std::fs::read_dir(d.path()).unwrap().all(|e| !e
+        .unwrap()
+        .file_name()
+        .to_string_lossy()
+        .contains("backup")));
+    run(&["edit", "--in-place", "--yes", "--set", "Title=T"]).success();
+    let backups: Vec<_> = std::fs::read_dir(d.path())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_name().to_string_lossy().contains("metadata-backup"))
+        .collect();
+    assert_eq!(backups.len(), 1);
+    assert!(
+        d.path().join("cfg/operations.jsonl").exists(),
+        "operation log written"
+    );
+}
+
+#[test]
+fn edit_unsupported_and_invalid_inputs_fail_clearly() {
+    let d = tempfile::tempdir().unwrap();
+    let src = put(
+        d.path(),
+        "a.docx",
+        &docx_at("2024-01-12T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
+    md().args(["edit", "--set", "EXIF:Artist=x", "--no-external"])
+        .arg(&src)
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("not writable"));
+    md().args(["edit", "--set", "novalue"])
+        .arg(&src)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("KEY=VALUE"));
+    md().arg("edit")
+        .arg(&src)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("nothing to do"));
+    md().args([
+        "edit",
+        "--in-place",
+        "--output-dir",
+        "x",
+        "--set",
+        "Title=1",
+    ])
+    .arg(&src)
+    .assert()
+    .failure();
+}
+
+#[test]
+fn clean_privacy_profile_on_jpeg_and_batch_partial() {
+    let d = tempfile::tempdir().unwrap();
+    let jpg = put(d.path(), "p.jpg", &sample_jpeg());
+    let out_dir = d.path().join("out");
+    md().args(["clean", "--profile", "privacy", "--output-dir"])
+        .arg(&out_dir)
+        .arg(&jpg)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "note: Removing fields does not guarantee",
+        ));
+    let v = json(
+        &md()
+            .args(["extract", "--no-external", "--no-hash"])
+            .arg(out_dir.join("p.jpg"))
+            .assert()
+            .success()
+            .get_output()
+            .stdout
+            .clone(),
+    );
+    let names: Vec<String> = v["files"][0]["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["name"].as_str().unwrap().to_string())
+        .collect();
+    assert!(!names.contains(&"Artist".to_string()) && !names.iter().any(|n| n.starts_with("GPS")));
+    // gps-only is not offered natively; with several files one failure -> exit 3 for mixed batch
+    let txt = put(d.path(), "t.txt", b"plain");
+    md().args(["clean", "--yes", "--output-dir"])
+        .arg(d.path().join("o2"))
+        .arg(&jpg)
+        .arg(&txt)
+        .assert()
+        .code(3);
+    assert!(
+        d.path().join("o2/p.jpg").exists(),
+        "successful files are still written"
+    );
+}
+
+#[test]
+fn edit_interactive_reads_commands() {
+    let d = tempfile::tempdir().unwrap();
+    let src = put(
+        d.path(),
+        "a.docx",
+        &docx_at("2024-01-12T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
+    md().args(["edit", "--interactive"])
+        .arg(&src)
+        .write_stdin("show\nset Title Hello there\nrm LastModifiedBy\ndone\n")
+        .assert()
+        .success();
+    let v = json(
+        &md()
+            .args(["extract", "--no-external"])
+            .arg(d.path().join("a.edited.docx"))
+            .assert()
+            .success()
+            .get_output()
+            .stdout
+            .clone(),
+    );
+    assert!(v["files"][0]["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|f| f["name"] == "Title" && f["raw"] == "Hello there"));
+    md().args(["edit", "--interactive"])
+        .arg(&src)
+        .write_stdin("quit\n")
+        .assert()
+        .failure();
+}
+
+#[test]
+fn copy_from_transfers_writable_fields_but_not_dates() {
+    let d = tempfile::tempdir().unwrap();
+    let a = put(
+        d.path(),
+        "src.docx",
+        &docx_at("2024-01-12T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
+    let b = put(
+        d.path(),
+        "dst.docx",
+        &kit::docx(&kit::DocxSpec {
+            creator: "Other",
+            last_modified_by: "Other",
+            created: "2020-01-01T00:00:00Z",
+            modified: "2020-01-02T00:00:00Z",
+            revision: 9,
+            tracked_insertions: 0,
+            application: "X",
+        }),
+    );
+    md().args(["edit", "--copy-from"])
+        .arg(&a)
+        .arg(&b)
+        .assert()
+        .success();
+    let v = json(
+        &md()
+            .args(["extract", "--no-external"])
+            .arg(d.path().join("dst.edited.docx"))
+            .assert()
+            .success()
+            .get_output()
+            .stdout
+            .clone(),
+    );
+    let f = v["files"][0]["fields"].as_array().unwrap().clone();
+    let get = |n: &str| {
+        f.iter()
+            .find(|x| x["name"] == n)
+            .map(|x| x["raw"].as_str().unwrap().to_string())
+    };
+    assert_eq!(get("Creator").as_deref(), Some("Ann"));
+    assert_eq!(
+        get("Created").as_deref(),
+        Some("2020-01-01T00:00:00Z"),
+        "dates not copied"
+    );
+}
