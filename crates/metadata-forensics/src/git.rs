@@ -33,18 +33,10 @@ pub fn read_history(dir: &Path, max_commits: usize, timeout: Duration) -> Result
     }
     let git = which_git().ok_or_else(|| MetaError::BackendUnavailable { backend: "git".into(), reason: "git not found in PATH".into() })?;
     let n = (max_commits + 1).to_string();
-    let args: Vec<&OsStr> = [
-        "--no-pager", "-c", "core.fsmonitor=false", "-c", "core.pager=cat", "-C",
-    ]
-    .iter()
-    .map(OsStr::new)
-    .chain([dir.as_os_str()])
-    .chain(
-        ["log", "--all", "--date-order", "-n", &n, "--format=%H%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%cI%x1f%s%x1e"]
-            .iter()
-            .map(OsStr::new),
-    )
-    .collect();
+    let fmt = "--format=%H%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%cI%x1f%s%x1e";
+    let mut args: Vec<std::ffi::OsString> = ["--no-pager", "-c", "core.fsmonitor=false", "-c", "core.pager=cat", "-C"].iter().map(Into::into).collect();
+    args.push(dir.as_os_str().to_owned());
+    args.extend(["log", "--all", "--date-order", "-n", n.as_str(), fmt].iter().map(std::ffi::OsString::from));
     let mut child = Command::new(&git)
         .args(&args)
         .env("GIT_TERMINAL_PROMPT", "0")
