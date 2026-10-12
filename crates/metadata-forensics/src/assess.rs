@@ -649,3 +649,133 @@ fn rule_git(c: &mut Ctx, g: &GitHistory, start: &Option<DayRange>, deadline: &Op
     let last = g.commits.iter().max_by_key(|c| secs(&c.author_date)).unwrap();
     let gev = |cm: &crate::git::Commit, f: &str| Evidence { file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]), field: f.into(), value: cm.author_date.iso.clone(), source: Source::Git };
     if let Some(s) = start {
+        let x = secs(&first.author_date);
+        if x + tol(true, claim_exact(s), th) < s.start {
+            c.push(Draft {
+                rule: "GIT-BEFORE-START",
+                title: "Git history begins before the claimed project start".into(),
+                severity: Severity::Review,
+                priority: 3,
+                evidence: vec![gev(first, "first commit author date")],
+                comparison_rule: "first commit - tolerance < claimed start".into(),
+                explanation: "The repository contains commits older than the claimed start date.".into(),
+                benign: vec!["Repository initialised from a template or earlier project.", "Cloned or forked starter code.", "The claimed start date may be approximate."],
+                obs: Confidence::High,
+                interp: Confidence::Low,
+                follow_up: "Ask which commits predate the project and where they came from.",
+            });
+        } else if x - s.end > th.gap_days * 86_400 {
+            c.push(Draft {
+                rule: "GIT-LATE-START",
+                title: "Available git history starts long after the claimed project start".into(),
+                severity: Severity::Info,
+                priority: 2,
+                evidence: vec![gev(first, "first commit author date")],
+                comparison_rule: format!("first commit - claimed start > {} days", th.gap_days),
+                explanation: "There is no repository history for the first part of the claimed period.".into(),
+                benign: vec!["Version control may have been adopted later, or history squashed/re-initialised."],
+                obs: Confidence::High,
+                interp: Confidence::Low,
+                follow_up: "Ask how the early work was tracked.",
+            });
+        }
+    }
+    if let Some(d) = deadline {
+        let late: Vec<_> = g.commits.iter().filter(|cm| secs(&cm.author_date) - tol(true, claim_exact(d), th) > d.end).collect();
+        if !late.is_empty() {
+            c.push(Draft {
+                rule: "GIT-AFTER-DEADLINE",
+                title: format!("{} commit(s) dated after the deadline", late.len()),
+                severity: Severity::Review,
+                priority: 4,
+                evidence: late.iter().map(|cm| gev(cm, "author date")).collect(),
+                comparison_rule: "commit author date - tolerance > deadline".into(),
+                explanation: "The repository contains work dated after the submission deadline.".into(),
+                benign: vec!["Post-submission cleanup in the same repository; the submitted snapshot may predate these commits."],
+                obs: Confidence::High,
+                interp: Confidence::Low,
+                follow_up: "Check which commit corresponds to the submitted snapshot.",
+            });
+        }
+    }
+    if let Some(n) = now {
+        let fut: Vec<_> = g.commits.iter().filter(|cm| secs(&cm.author_date) > n.secs + th.tolerance_hours * 3600 || secs(&cm.commit_date) > n.secs + th.tolerance_hours * 3600).collect();
+        if !fut.is_empty() {
+            c.push(Draft {
+                rule: "GIT-FUTURE",
+                title: format!("{} commit(s) dated in the future", fut.len()),
+                severity: Severity::HighPriority,
+                priority: 5,
+                evidence: fut.iter().map(|cm| gev(cm, "date")).collect(),
+                comparison_rule: "commit date > assessment time + tolerance".into(),
+                explanation: "Commit dates after the analysis time cannot be genuine unless a clock was wrong or dates were set manually.".into(),
+                benign: vec!["Wrong system clock on the committing machine.", "The analysis machine's clock is wrong."],
+                obs: Confidence::High,
+                interp: Confidence::Medium,
+                follow_up: "Verify the analysis clock; then ask about the committing environment.",
+            });
+        }
+    }
+    // child dated before its parent
+    let by_hash: std::collections::HashMap<&str, &crate::git::Commit> = g.commits.iter().map(|cm| (cm.hash.as_str(), cm)).collect();
+    let mut back = vec![];
+    for cm in &g.commits {
+        for p in &cm.parents {
+            if let Some(pc) = by_hash.get(p.as_str()) {
+                if secs(&cm.commit_date) + 120 < secs(&pc.commit_date) {
+                    back.push((cm, *pc));
+                }
+            }
+        }
+    }
+    if !back.is_empty() {
+        c.push(Draft {
+            rule: "GIT-NONMONOTONIC",
+            title: format!("{} commit(s) are dated earlier than their parent", back.len()),
+            severity: Severity::Review,
+            priority: 3,
+            evidence: back.iter().map(|(cm, pc)| Evidence { file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]), field: "commit date vs parent".into(), value: format!("{} < parent {}", cm.commit_date.iso, pc.commit_date.iso), source: Source::Git }).collect(),
+            comparison_rule: "child committer date + 2 min < parent committer date".into(),
+            explanation: "History order and recorded dates disagree.".into(),
+            benign: vec!["Clock changes or skew between machines.", "Rebases, cherry-picks or merges of work done elsewhere."],
+            obs: Confidence::High,
+            interp: Confidence::Low,
+            follow_up: "Inspect these commits' author/committer dates and the branch structure.",
+        });
+    }
+    let skewed: Vec<_> = g.commits.iter().filter(|cm| (secs(&cm.author_date) - secs(&cm.commit_date)).abs() > 86_400).collect();
+    if !skewed.is_empty() {
+        c.push(Draft {
+            rule: "GIT-AUTHOR-COMMIT-SKEW",
+            title: format!("{} commit(s) have author and committer dates more than a day apart", skewed.len()),
+            severity: Severity::Info,
+            priority: 1,
+            evidence: skewed.iter().map(|cm| Evidence { file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]), field: "author vs commit date".into(), value: format!("{} / {}", cm.author_date.iso, cm.commit_date.iso), source: Source::Git }).collect(),
+            comparison_rule: "|author date - committer date| > 24h".into(),
+            explanation: "Typical of rebased, amended or cherry-picked commits.".into(),
+            benign: vec!["Ordinary rebase or amend workflows."],
+            obs: Confidence::High,
+            interp: Confidence::Low,
+            follow_up: "None unless many commits are affected.",
+        });
+    }
+    let _ = last;
+}
+
+fn rule_gaps(c: &mut Ctx, emb: &[&Event], start: &Option<DayRange>, end: &Option<DayRange>) {
+    let mut times: Vec<(i64, String)> = emb.iter().filter_map(|e| e.time.sort_key().map(|k| (k, format!("{} {}", e.file, e.field)))).collect();
+    if let Some(g) = c.i.git {
+        times.extend(g.commits.iter().filter_map(|cm| cm.author_date.sort_key().map(|k| (k, format!("git:{}", &cm.hash[..10.min(cm.hash.len())])))));
+    }
+    if let Some(s) = start {
+        times.retain(|(k, _)| *k >= s.start);
+    }
+    if let Some(e) = end {
+        times.retain(|(k, _)| *k <= e.end);
+    }
+    times.sort();
+    times.dedup_by_key(|(k, _)| *k / 3600);
+    if times.len() < 3 {
+        return;
+    }
+    let gap = c.i.thresholds.gap_days * 86_400;
