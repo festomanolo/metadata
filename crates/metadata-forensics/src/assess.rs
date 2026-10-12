@@ -258,3 +258,133 @@ pub fn assess(input: &Input) -> Assessment {
         .iter()
         .map(|r| InventoryItem {
             path: rel(root, &r.path),
+            size: r.size,
+            sha256: r.sha256.clone(),
+            format: r.format.id.clone(),
+            extension_match: r.format.extension_match,
+            fs_created: r.filesystem.created.clone(),
+            fs_modified: r.filesystem.modified.clone(),
+            fields: r.fields.len(),
+            warnings: r.warnings.iter().map(|w| format!("[{}] {}", w.backend, w.message)).collect(),
+            backends: r.backends.iter().map(|b| format!("{} {}", b.name, b.version)).collect(),
+            error: r.error.clone(),
+        })
+        .collect();
+    Assessment {
+        schema: ASSESSMENT_SCHEMA.into(),
+        tool: format!("metadata {}", env!("CARGO_PKG_VERSION")),
+        case_id: input.case_id.into(),
+        assessed_at: input.now.clone(),
+        root: root.display().to_string(),
+        claims: claims.clone(),
+        thresholds: th.clone(),
+        inventory,
+        project: input.project.clone(),
+        git_commits: input.git.map(|g| g.commits.len()),
+        findings,
+        integrity: None,
+        checks_not_implemented: vec![
+            "Consistency between source code, documentation, screenshots and project structure (planned; requires content analysis)".into(),
+        ],
+        limitations: vec![
+            "Timestamps embedded in files come from the clock of whatever device or application last wrote them and can be edited.".into(),
+            "Filesystem timestamps reflect copying, extraction or synchronization as much as authorship, and are weak evidence on their own.".into(),
+            "Git commit dates can be rewritten (amend, rebase, environment overrides) and are not independently verified.".into(),
+            "Timestamps without a timezone are compared with a tolerance; observations near a boundary are marked with lower confidence.".into(),
+            "Hashes establish content equality with the recorded copy only; they do not establish authorship or creation time.".into(),
+            "Missing metadata is common (exports, messaging apps, privacy settings) and is not by itself suspicious.".into(),
+        ],
+        disclaimer: DISCLAIMER.into(),
+    }
+}
+
+/// Re-hash inputs after analysis to show the analysis did not alter the evidence.
+pub fn verify_unchanged(root: &Path, reports: &[FileReport]) -> Integrity {
+    let mut changed = vec![];
+    let mut n = 0;
+    for r in reports {
+        if let Some(before) = &r.sha256 {
+            n += 1;
+            match sha256_file(Path::new(&r.path)) {
+                Ok(after) if &after == before => {}
+                _ => changed.push(rel(root, &r.path)),
+            }
+        }
+    }
+    Integrity {
+        files_rehashed: n,
+        unchanged: changed.is_empty(),
+        changed,
+        note: "SHA-256 computed before analysis and again after; equality shows this run did not modify the files.".into(),
+    }
+}
+
+/// Mask personal identifiers in evidence values (author names etc.).
+pub fn redact(a: &mut Assessment) {
+    for f in &mut a.findings {
+        for e in &mut f.evidence {
+            let name = e.field.rsplit(':').next().unwrap_or("");
+            if metadata_core::is_sensitive_name(name) {
+                e.value = "[redacted]".into();
+            }
+        }
+    }
+}
+
+// ---------------- rules ----------------
+
+fn rule_future(c: &mut Ctx, emb: &[&Event], now: &Option<T>) {
+    let Some(now) = now else { return };
+    for e in emb {
+        let Some(x) = t(&e.time) else { continue };
+        if x.secs > now.secs + tol(x.exact, true, c.i.thresholds) {
+            c.push(Draft {
+                rule: "TS-FUTURE",
+                title: "Embedded timestamp is later than the time of analysis".into(),
+                severity: Severity::HighPriority,
+                priority: 5,
+                evidence: vec![ev(e)],
+                comparison_rule: format!("embedded timestamp > assessment time ({}) + tolerance", c.i.now.iso),
+                explanation: "A timestamp stored in the file lies in the future relative to the analysis clock, which a genuine save normally cannot produce.".into(),
+                benign: vec!["The creating device's clock was set incorrectly.", "The analysis machine's clock is wrong.", "Timezone handling by the writing application."],
+                obs: conf_obs(x.exact, true),
+                interp: Confidence::Medium,
+                follow_up: "Check the analysis machine's clock, then ask about the originating device or tool.",
+            });
+        }
+    }
+}
+
+fn rule_before_start(c: &mut Ctx, emb: &[&Event], s: &DayRange) {
+    for e in emb.iter().filter(|e| e.role == Role::Created) {
+        let Some(x) = t(&e.time) else { continue };
+        if x.secs + tol(x.exact, claim_exact(s), c.i.thresholds) < s.start {
+            let image = cat_of(c.i.reports, c.i.root, &e.file).is_some_and(|r| r.format.category == Category::Image);
+            c.push(Draft {
+                rule: "TS-BEFORE-START",
+                title: "Creation timestamp is earlier than the claimed project start".into(),
+                severity: Severity::Review,
+                priority: if image { 2 } else { 3 },
+                evidence: vec![ev(e)],
+                comparison_rule: format!("embedded creation time + {}h tolerance < claimed start ({})", c.i.thresholds.tolerance_hours, c.i.claims.start.clone().unwrap_or_default()),
+                explanation: "The file's own metadata says it was created before the student said the project began.".into(),
+                benign: [&STD_BENIGN_TIME[..], &["Reference material, stock assets or templates from earlier coursework are often included."]].concat(),
+                obs: conf_obs(x.exact, claim_exact(s)),
+                interp: Confidence::Low,
+                follow_up: "Ask what the file is and where it came from; compare with its content and any earlier milestone submission.",
+            });
+        }
+    }
+}
+
+fn rule_after(c: &mut Ctx, emb: &[&Event], d: &DayRange, label: &str, now: &Option<T>) {
+    for e in emb {
+        let Some(x) = t(&e.time) else { continue };
+        if now.as_ref().is_some_and(|n| x.secs > n.secs + tol(x.exact, true, c.i.thresholds)) {
+            continue; // reported as TS-FUTURE
+        }
+        if x.secs - tol(x.exact, claim_exact(d), c.i.thresholds) > d.end {
+            let media = e.field.contains("creation_time") || e.field.contains("Tags");
+            let (rule, title) = if media {
+                ("TS-MEDIA-AFTER", format!("Media container timestamp is later than the {label}"))
+            } else {
