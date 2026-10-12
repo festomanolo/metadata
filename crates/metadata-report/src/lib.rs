@@ -285,8 +285,12 @@ pub fn findings_csv(a: &Assessment, states: &BTreeMap<String, FindingState>) -> 
             sev_label(f.severity),
             f.review_priority,
             st.map(|s| s.status).unwrap_or(FindingStatus::Open).as_str(),
-            csv(&f.files.join("; ")), csv(&f.title), csv(&f.explanation), csv(&f.follow_up),
-            csv(st.and_then(|s| s.reason.as_deref()).unwrap_or("")), csv(st.and_then(|s| s.note.as_deref()).unwrap_or(""))
+            csv(&f.files.join("; ")),
+            csv(&f.title),
+            csv(&f.explanation),
+            csv(&f.follow_up),
+            csv(st.and_then(|s| s.reason.as_deref()).unwrap_or("")),
+            csv(st.and_then(|s| s.note.as_deref()).unwrap_or(""))
         );
     }
     o
@@ -300,13 +304,37 @@ mod tests {
     use metadata_forensics::project::ProjectSummary;
 
     fn sample(creator: &str) -> Assessment {
-        let c = Claims { start: Some("2024-01-10".into()), ..Default::default() };
-        let mut r = metadata_core::FileReport {
-            schema_version: "1".into(), path: "/p/<img src=x onerror=alert(1)>.docx".into(), size: 3, sha256: Some("a".repeat(64)),
-            format: metadata_core::FormatInfo { id: "docx".into(), description: String::new(), mime: String::new(), category: metadata_core::Category::Document, extension_match: metadata_core::ExtensionMatch::Match, signature_hex: String::new() },
-            filesystem: Default::default(), fields: vec![], warnings: vec![], backends: vec![], unavailable: vec![], error: None,
+        let c = Claims {
+            start: Some("2024-01-10".into()),
+            ..Default::default()
         };
-        let mut f = metadata_core::Field::new("OOXML-Core", "Created", "2020-01-01T00:00:00Z", "native", metadata_core::Provenance::Stored);
+        let mut r = metadata_core::FileReport {
+            schema_version: "1".into(),
+            path: "/p/<img src=x onerror=alert(1)>.docx".into(),
+            size: 3,
+            sha256: Some("a".repeat(64)),
+            format: metadata_core::FormatInfo {
+                id: "docx".into(),
+                description: String::new(),
+                mime: String::new(),
+                category: metadata_core::Category::Document,
+                extension_match: metadata_core::ExtensionMatch::Match,
+                signature_hex: String::new(),
+            },
+            filesystem: Default::default(),
+            fields: vec![],
+            warnings: vec![],
+            backends: vec![],
+            unavailable: vec![],
+            error: None,
+        };
+        let mut f = metadata_core::Field::new(
+            "OOXML-Core",
+            "Created",
+            "2020-01-01T00:00:00Z",
+            "native",
+            metadata_core::Provenance::Stored,
+        );
         f.time = metadata_core::time::parse_iso("2020-01-01T00:00:00Z");
         r.fields.push(f);
         r.fields.push(metadata_core::Field::new("OOXML-Core", "Creator", creator, "native", metadata_core::Provenance::Stored));
