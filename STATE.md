@@ -6,7 +6,7 @@ Rule: after adding/changing/removing a feature, file, public API, or dependency,
 - Toolchain: `export PATH=$HOME/.cargo/bin:$PATH` (cargo/rustc 1.99; MSRV set to 1.82). Not on default PATH; PATH does not persist between Bash calls.
 - Backends on dev machine: exiftool NO, ffprobe NO, 7z NO, tika NO → tests use native paths only (`use_external:false`); adapters tested via JSON-parse unit tests.
 - First build is slow (~3 min); run long cargo commands with a 600000 ms timeout.
-- Check: `cargo fmt --all && cargo clippy --workspace --all-targets && cargo test --workspace` (all green as of last update; 53 tests).
+- Check: `cargo fmt --all && cargo clippy --workspace --all-targets && cargo test --workspace` (all green; ~80 tests).
 - Last updated: 2026-10-12 — M1 foundation + most of M2 + manifest/compare done.
 
 ## Feature status
@@ -30,13 +30,15 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 | Extraction | Legacy OLE2 doc/xls/ppt, 7z/rar listing, video/audio w/o tools | PLANNED | reported as `unavailable`, not faked |
 | Extraction | Source-project inspection (manifests, git history) | PLANNED | for directories; needs git subprocess |
 | Commands | inspect, extract, batch, search, compare (file+dir), hash, verify-manifest, capabilities, doctor, config | DONE | integration-tested |
-| Commands | timeline | PLANNED | M5 |
+| Commands | timeline (sources separate; --source, --no-git, --manifest intake, --claims) | DONE | `cli/forensic.rs` |
+| Commands | assess (claims flags/file, --previous, git, redaction default, integrity re-hash, --min-severity) | DONE | JSON+human; HTML PLANNED (M6) |
 | Commands | edit, clean | PLANNED | M4 (no write support is claimed anywhere until verified) |
 | Commands | assess, cases, reports | PLANNED | M5/M6 |
 | Commands | tui | PLANNED | M3 |
 | Forensics | Evidence manifest (versioned, entries digest, verify, traversal-safe) | DONE | `forensics/manifest.rs` |
 | Forensics | Field-level compare | DONE | `forensics/compare.rs` |
-| Forensics | Timeline, assessment rules/findings | PLANNED | |
+| Forensics | Timeline, git history reader, project summary, assessment rules | DONE | `forensics/{timeline,git,project,claims,assess}.rs`; rules: TS-FUTURE, TS-BEFORE-START, TS-AFTER, TS-MEDIA-AFTER, TS-MOD-BEFORE-CREATE, MS-LATE-CREATION, UNI-FS, UNI-EMBEDDED, FMT-EXT-MISMATCH, DUP-CONTENT, MISS-METADATA, INC-PRESENT/ABSENT, GIT-{BEFORE-START,LATE-START,AFTER-DEADLINE,FUTURE,NONMONOTONIC,AUTHOR-COMMIT-SKEW}, GAP-HISTORY, SUB-DIFF, DUP-PREVIOUS, SUB-CREATED-CHANGED, SUB-MODIFIED-BACKWARDS |
+| Forensics | Code/docs/screenshots/structure consistency check | PLANNED | listed in `checks_not_implemented` of every assessment |
 | Output | JSON envelope (schema 1.0.0), CSV (formula-injection guarded), human, redaction | DONE | |
 | Perf | Bounded rayon pool, cancellation (Ctrl+C), progress bar (TTY only) | DONE | benchmarks PLANNED; caching/index PLANNED |
 | Security | No shell, timeout+output cap for subprocesses, panic isolation per parser, symlinks not followed | DONE | |
@@ -58,7 +60,7 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
   - `backends.rs`: `Backends::discover()/status()/extract_external()`, `run_capped()` (timeout, output cap, no shell), `parse_exiftool`, `parse_ffprobe`
   - `capabilities.rs`: `matrix(&Backends)` (write column intentionally empty until M4)
   - `native/{mod,image,ooxml,pdf,archive,text,xmp}.rs`: native extractors; `mod.rs` dispatches + `catch_unwind`
-- `crates/metadata-forensics`: `manifest.rs` (`create/load/verify`, `Manifest`, `VerifyReport`), `compare.rs` (`compare_reports`, `compare_sets`, `DiffStatus`)
+- `crates/metadata-forensics`: `claims.rs` (Claims, Milestone, Thresholds, parse_claim day-ranges), `git.rs` (read_history, hardened git subprocess), `timeline.rs` (Source, Role, Event, build), `project.rs`, `assess.rs` (assess, verify_unchanged, redact, Finding), `manifest.rs` (`create/load/verify`, `Manifest`, `VerifyReport`), `compare.rs` (`compare_reports`, `compare_sets`, `DiffStatus`)
 - `crates/metadata-cli` (binary `metadata`): `args.rs` (clap), `config.rs`, `render.rs` (json_envelope, csv_fields, human_report, redact, Style), `main.rs` (all command handlers `cmd_*`, `scan()`, `emit()`, `write_output()`); tests in `tests/cli.rs` (assert_cmd)
 - `crates/metadata-testkit` (dev-only): `jpeg(&ExifSpec,..)`, `png`, `docx(&DocxSpec)`, `odt`, `pdf(..,incremental)`, `zip_with`, `tar_gz`. Use these for all new tests.
 - Tests: `crates/metadata-engine/tests/extract.rs` (19 fixture tests incl. malformed, bombs, cancel, symlinks)
@@ -77,7 +79,9 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 - Archive entry timestamps (ZIP DOS time) have no timezone → naive `TimeValue`.
 
 ## Next steps (in order)
-1. M5: `timeline` command + forensics `timeline.rs` (sources kept separate: embedded / filesystem / archive / git / intake), `assess` engine (rules → findings with id, severity INFO/REVIEW/HIGH PRIORITY, alternatives, observation vs interpretation confidence), assessment config (claimed start/milestones/deadline).
-2. M4: edit/clean (exiftool-backed writes + native-safe pipeline: dry-run, diff, backup, temp+verify+atomic replace, signature warning).
+1. M4: edit/clean (exiftool-backed writes + native-safe pipeline: dry-run, diff, backup, temp+verify+atomic replace, signature warning).
 3. M3: TUI (ratatui+crossterm).
 4. M6: SQLite cases, HTML/CSV/JSON reports. 5. M7: benches, docs (README, CLI ref, format matrix), audit.
+
+- Scans exclude `.git` by default (`--include-vcs`, `--exclude DIR`); assess/timeline also skip node_modules/target/__pycache__/.venv/venv. `hash` uses same scan_opts (so excludes .git too unless --include-vcs).
+- Env note: an external auto-commit/sync process in the user's environment commits to main and a GitHub remote; do not fight it.

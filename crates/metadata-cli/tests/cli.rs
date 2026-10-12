@@ -432,3 +432,135 @@ fn config_default_format_applies_and_flag_overrides() {
         .failure()
         .stderr(predicate::str::contains("invalid config"));
 }
+
+fn docx_at(created: &str, modified: &str) -> Vec<u8> {
+    kit::docx(&kit::DocxSpec {
+        creator: "Ann",
+        last_modified_by: "Ann",
+        created,
+        modified,
+        revision: 1,
+        tracked_insertions: 0,
+        application: "W",
+    })
+}
+
+#[test]
+fn timeline_separates_sources_and_filters() {
+    let d = tempfile::tempdir().unwrap();
+    put(
+        d.path(),
+        "p/a.docx",
+        &docx_at("2024-01-12T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
+    let out = md()
+        .args(["timeline", "-f", "json", "--no-git", "--no-external"])
+        .arg(d.path().join("p"))
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let v = json(&out);
+    let ev = v["events"].as_array().unwrap();
+    assert!(ev
+        .iter()
+        .any(|e| e["source"] == "embedded" && e["field"] == "OOXML-Core:Created"));
+    assert!(ev.iter().any(|e| e["source"] == "filesystem"));
+    assert!(v["source_reliability"]["git"].is_string());
+    let out = md()
+        .args(["timeline", "-f", "json", "--source", "embedded"])
+        .arg(d.path().join("p"))
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    assert!(json(&out)["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|e| e["source"] == "embedded"));
+    md().args(["timeline", "--source", "bogus"])
+        .arg(d.path().join("p"))
+        .assert()
+        .failure();
+}
+
+#[test]
+fn assess_reports_findings_without_verdicts_and_redacts() {
+    let d = tempfile::tempdir().unwrap();
+    let root = d.path().join("proj");
+    put(
+        &root,
+        "old.docx",
+        &docx_at("2023-01-01T09:00:00Z", "2024-02-01T09:00:00Z"),
+    );
+    put(&root, "node_modules/x.txt", b"ignored");
+    let run = |extra: &[&str]| {
+        md().args([
+            "assess",
+            "-f",
+            "json",
+            "--no-git",
+            "--case",
+            "s1",
+            "--start",
+            "2024-01-10",
+            "--deadline",
+            "2024-06-01",
+            "--milestone",
+            "Proposal=2024-02-01:old",
+        ])
+        .args(extra)
+        .arg(&root)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone()
+    };
+    let v = json(&run(&[]));
+    assert_eq!(v["case_id"], "s1");
+    assert_eq!(v["integrity"]["unchanged"], true);
+    assert_eq!(
+        v["inventory"].as_array().unwrap().len(),
+        1,
+        "node_modules excluded"
+    );
+    let f = v["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["rule"] == "TS-BEFORE-START")
+        .unwrap();
+    assert_eq!(f["severity"], "REVIEW");
+    assert!(!v["disclaimer"].as_str().unwrap().is_empty());
+    // personal identifiers masked by default
+    let all = String::from_utf8(run(&["--min-severity", "info"])).unwrap();
+    assert!(!all.contains("\"Ann\""));
+    // human output includes the alternative explanations
+    md().args(["assess", "--no-git", "--start", "2024-01-10"])
+        .arg(&root)
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("could also be").and(predicate::str::contains(
+                "does not establish academic misconduct",
+            )),
+        );
+    md().args(["assess", "--start", "garbage"])
+        .arg(&root)
+        .assert()
+        .failure();
+    md().args([
+        "assess",
+        "--start",
+        "2024-05-01",
+        "--deadline",
+        "2024-01-01",
+    ])
+    .arg(&root)
+    .assert()
+    .failure();
+}
