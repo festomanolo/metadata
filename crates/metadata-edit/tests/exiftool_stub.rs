@@ -105,8 +105,18 @@ fn exiftool_failure_surfaces_and_original_survives() {
     let src = d.path().join("a.jpg");
     std::fs::write(&src, kit::jpeg(None, None, 4, 4)).unwrap();
     let before = std::fs::read(&src).unwrap();
-    let p = plan(&e, &src, &EditRequest { ops: vec![Op::Set("EXIF:Artist".into(), "x".into())], profile: None }).unwrap();
-    let err = execute(&e, &src, &d.path().join("b.jpg"), &p, &ApplyOpts::default()).unwrap_err().to_string();
+    let p = plan(
+        &e,
+        &src,
+        &EditRequest {
+            ops: vec![Op::Set("EXIF:Artist".into(), "x".into())],
+            profile: None,
+        },
+    )
+    .unwrap();
+    let err = execute(&e, &src, &d.path().join("b.jpg"), &p, &ApplyOpts::default())
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("boom") || err.contains("exiftool"), "{err}");
     assert_eq!(std::fs::read(&src).unwrap(), before);
     assert!(!d.path().join("b.jpg").exists());
