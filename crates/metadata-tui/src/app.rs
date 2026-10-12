@@ -453,7 +453,9 @@ impl App {
 
     /// Writable keys for the current file (native writers only) plus whether free-form keys are accepted.
     pub fn edit_keys(&self) -> (Vec<String>, bool) {
-        let Some(r) = self.current() else { return (vec![], false) };
+        let Some(r) = self.current() else {
+            return (vec![], false);
+        };
         let k = metadata_edit::native::keys(&r.format.id);
         let free = k.is_empty() && self.backends.exiftool.is_some() || r.format.id == "png";
         (k.into_iter().filter(|k| !k.contains('<')).collect(), free)
@@ -473,7 +475,10 @@ impl App {
         match self.modal.clone() {
             Modal::None => self.on_key_main(k),
             Modal::Help | Modal::Message(_) => {
-                if matches!(k.code, KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') | KeyCode::Char('?')) {
+                if matches!(
+                    k.code,
+                    KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') | KeyCode::Char('?')
+                ) {
                     self.modal = Modal::None;
                 }
             }
@@ -506,7 +511,11 @@ impl App {
                 }
                 _ => {}
             },
-            Modal::Input { prompt, mut buf, purpose } => match k.code {
+            Modal::Input {
+                prompt,
+                mut buf,
+                purpose,
+            } => match k.code {
                 KeyCode::Esc => {
                     self.modal = Modal::None;
                     self.status = "Cancelled.".into();
@@ -517,11 +526,19 @@ impl App {
                 }
                 KeyCode::Backspace => {
                     buf.pop();
-                    self.modal = Modal::Input { prompt, buf, purpose };
+                    self.modal = Modal::Input {
+                        prompt,
+                        buf,
+                        purpose,
+                    };
                 }
                 KeyCode::Char(c) => {
                     buf.push(c);
-                    self.modal = Modal::Input { prompt, buf, purpose };
+                    self.modal = Modal::Input {
+                        prompt,
+                        buf,
+                        purpose,
+                    };
                 }
                 _ => {}
             },
