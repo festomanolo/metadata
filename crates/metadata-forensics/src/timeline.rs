@@ -115,26 +115,58 @@ pub fn file_events(root: &Path, reports: &[FileReport]) -> Vec<Event> {
             ("modified", &r.filesystem.modified),
         ] {
             if let Some(t) = t {
-                v.push(Event { time: t.clone(), source: Source::Filesystem, role: if name == "created" { Role::Created } else { Role::Modified }, file: file.clone(), field: format!("Filesystem:{name}"), value: t.iso.clone() });
+                v.push(Event {
+                    time: t.clone(),
+                    source: Source::Filesystem,
+                    role: if name == "created" {
+                        Role::Created
+                    } else {
+                        Role::Modified
+                    },
+                    file: file.clone(),
+                    field: format!("Filesystem:{name}"),
+                    value: t.iso.clone(),
+                });
             }
         }
         for f in &r.fields {
             let Some(t) = &f.time else { continue };
             let (source, role) = if f.group == "Archive" {
-                if f.name == "Entry" { (Source::Archive, Role::Modified) } else { continue } // min/max summaries duplicate entries
+                if f.name == "Entry" {
+                    (Source::Archive, Role::Modified)
+                } else {
+                    continue;
+                } // min/max summaries duplicate entries
             } else if f.provenance == Provenance::Stored {
                 (Source::Embedded, role_of(&f.name))
             } else {
                 continue;
             };
-            let field = if source == Source::Archive { format!("Archive:{}", f.raw) } else { f.key() };
-            v.push(Event { time: t.clone(), source, role, file: file.clone(), field, value: f.raw.clone() });
+            let field = if source == Source::Archive {
+                format!("Archive:{}", f.raw)
+            } else {
+                f.key()
+            };
+            v.push(Event {
+                time: t.clone(),
+                source,
+                role,
+                file: file.clone(),
+                field,
+                value: f.raw.clone(),
+            });
         }
     }
     v
 }
 
-pub fn build(root: &Path, reports: &[FileReport], git: Option<&GitHistory>, intake: Option<(&str, &TimeValue)>, claims: Option<&Claims>) -> Vec<Event> {
+pub fn build(
+    root: &Path,
+    reports: &[FileReport],
+    git: Option<&GitHistory>,
+    intake: Option<(&str, &TimeValue)>,
+    claims: Option<&Claims>,
+) -> Vec<Event> {
     let mut v = file_events(root, reports);
     if let Some(g) = git {
         for c in &g.commits {
