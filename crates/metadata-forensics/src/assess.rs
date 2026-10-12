@@ -433,7 +433,10 @@ fn rule_after(c: &mut Ctx, emb: &[&Event], d: &DayRange, label: &str, now: &Opti
                     format!("Media container timestamp is later than the {label}"),
                 )
             } else {
-                ("TS-AFTER", format!("Embedded timestamp is later than the {label}"))
+                (
+                    "TS-AFTER",
+                    format!("Embedded timestamp is later than the {label}"),
+                )
             };
             c.push(Draft {
                 rule,
@@ -464,8 +467,15 @@ fn rule_modified_before_created(c: &mut Ctx, emb: &[&Event]) {
         }
     }
     for ((_, _), (cr, md)) in by {
-        let (Some(created), Some(modified)) = (cr.iter().min_by_key(|e| e.time.sort_key()), md.iter().max_by_key(|e| e.time.sort_key())) else { continue };
-        let (Some(a), Some(b)) = (t(&created.time), t(&modified.time)) else { continue };
+        let (Some(created), Some(modified)) = (
+            cr.iter().min_by_key(|e| e.time.sort_key()),
+            md.iter().max_by_key(|e| e.time.sort_key()),
+        ) else {
+            continue;
+        };
+        let (Some(a), Some(b)) = (t(&created.time), t(&modified.time)) else {
+            continue;
+        };
         if b.secs + tol(a.exact, b.exact, c.i.thresholds) < a.secs {
             c.push(Draft {
                 rule: "TS-MOD-BEFORE-CREATE",
@@ -510,13 +520,34 @@ fn rule_milestone(c: &mut Ctx, emb: &[&Event], name: &str, m: &DayRange, filt: O
 
 fn rule_uniform(c: &mut Ctx, events: &[Event]) {
     let min = c.i.thresholds.uniform_min_files;
-    let hash_of = |file: &str| cat_of(c.i.reports, c.i.root, file).and_then(|r| r.sha256.clone()).unwrap_or_default();
+    let hash_of = |file: &str| {
+        cat_of(c.i.reports, c.i.root, file)
+            .and_then(|r| r.sha256.clone())
+            .unwrap_or_default()
+    };
     for (source, rule, role, title, sev, prio) in [
-        (Source::Filesystem, "UNI-FS", Role::Modified, "Many different files share one filesystem modification time", Severity::Info, 1),
-        (Source::Embedded, "UNI-EMBEDDED", Role::Created, "Many different files share one embedded creation time", Severity::Review, 2),
+        (
+            Source::Filesystem,
+            "UNI-FS",
+            Role::Modified,
+            "Many different files share one filesystem modification time",
+            Severity::Info,
+            1,
+        ),
+        (
+            Source::Embedded,
+            "UNI-EMBEDDED",
+            Role::Created,
+            "Many different files share one embedded creation time",
+            Severity::Review,
+            2,
+        ),
     ] {
         let mut groups: BTreeMap<&str, Vec<&Event>> = BTreeMap::new();
-        for e in events.iter().filter(|e| e.source == source && e.role == role) {
+        for e in events
+            .iter()
+            .filter(|e| e.source == source && e.role == role)
+        {
             groups.entry(e.time.iso.as_str()).or_default().push(e);
         }
         for (iso, evs) in groups {
@@ -546,7 +577,11 @@ fn rule_uniform(c: &mut Ctx, events: &[Event]) {
 }
 
 fn rule_ext_mismatch(c: &mut Ctx) {
-    for r in c.i.reports.iter().filter(|r| r.format.extension_match == ExtensionMatch::Mismatch) {
+    for r in
+        c.i.reports
+            .iter()
+            .filter(|r| r.format.extension_match == ExtensionMatch::Mismatch)
+    {
         let file = rel(c.i.root, &r.path);
         c.push(Draft {
             rule: "FMT-EXT-MISMATCH",
