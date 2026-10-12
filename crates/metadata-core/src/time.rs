@@ -204,3 +204,35 @@ mod tests {
             .is_some());
     }
 }
+
+/// Format as a PDF date string (`D:YYYYMMDDHHmmSS` + `Z` or `+HH'mm'`); naive values get no zone.
+pub fn to_pdf(t: &TimeValue) -> Option<String> {
+    let (date, rest) = t.iso.split_once('T')?;
+    let d: String = date.chars().filter(char::is_ascii_digit).collect();
+    let time_part = rest.get(..8)?;
+    let tm: String = time_part.chars().filter(char::is_ascii_digit).collect();
+    let zone = rest.get(8..).unwrap_or("");
+    let z = if !t.offset_known {
+        String::new()
+    } else if zone == "+00:00" || zone == "Z" {
+        "Z".to_string()
+    } else {
+        format!("{}{}'{}'", &zone[..1], &zone[1..3], &zone[4..6])
+    };
+    Some(format!("D:{d}{tm}{z}"))
+}
+
+#[cfg(test)]
+mod pdf_fmt_tests {
+    use super::*;
+    #[test]
+    fn pdf_roundtrip() {
+        for s in [
+            "D:20230501120000+02'00'",
+            "D:20230501120000Z",
+            "D:20230501120000",
+        ] {
+            assert_eq!(to_pdf(&parse_pdf(s).unwrap()).as_deref(), Some(s));
+        }
+    }
+}
