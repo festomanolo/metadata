@@ -18,7 +18,10 @@ impl TimeValue {
         TimeValue {
             iso: dt.to_rfc3339_opts(SecondsFormat::Secs, false),
             offset_known: true,
-            utc: Some(dt.with_timezone(&Utc).to_rfc3339_opts(SecondsFormat::Secs, true)),
+            utc: Some(
+                dt.with_timezone(&Utc)
+                    .to_rfc3339_opts(SecondsFormat::Secs, true),
+            ),
         }
     }
     pub fn naive(n: NaiveDateTime) -> Self {
@@ -59,17 +62,30 @@ fn parse_offset(s: &str) -> Option<FixedOffset> {
         return None;
     }
     let h: i32 = digits[..2].parse().ok()?;
-    let m: i32 = if digits.len() >= 4 { digits[2..4].parse().ok()? } else { 0 };
+    let m: i32 = if digits.len() >= 4 {
+        digits[2..4].parse().ok()?
+    } else {
+        0
+    };
     FixedOffset::east_opt(sign * (h * 3600 + m * 60))
 }
 
 /// EXIF-style `YYYY:MM:DD HH:MM:SS` (also `-` separated), optional separate offset (`+02:00`).
 pub fn parse_exif(s: &str, offset: Option<&str>) -> Option<TimeValue> {
     let s = s.trim().trim_matches('"');
-    let fmts = ["%Y:%m:%d %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y:%m:%d %H:%M:%S%.f"];
-    let n = fmts.iter().find_map(|f| NaiveDateTime::parse_from_str(s, f).ok())?;
+    let fmts = [
+        "%Y:%m:%d %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y:%m:%d %H:%M:%S%.f",
+    ];
+    let n = fmts
+        .iter()
+        .find_map(|f| NaiveDateTime::parse_from_str(s, f).ok())?;
     match offset.and_then(parse_offset) {
-        Some(o) => n.and_local_timezone(o).single().map(TimeValue::from_datetime),
+        Some(o) => n
+            .and_local_timezone(o)
+            .single()
+            .map(TimeValue::from_datetime),
         None => Some(TimeValue::naive(n)),
     }
 }
@@ -100,7 +116,10 @@ pub fn parse_pdf(s: &str) -> Option<TimeValue> {
     )
     .ok()?;
     match parse_offset(rest) {
-        Some(o) => n.and_local_timezone(o).single().map(TimeValue::from_datetime),
+        Some(o) => n
+            .and_local_timezone(o)
+            .single()
+            .map(TimeValue::from_datetime),
         None => Some(TimeValue::naive(n)),
     }
 }
@@ -111,18 +130,26 @@ pub fn parse_iso(s: &str) -> Option<TimeValue> {
     if let Ok(d) = DateTime::parse_from_rfc3339(s) {
         return Some(TimeValue::from_datetime(d));
     }
-    for f in ["%Y-%m-%dT%H:%M:%S%.f", "%Y-%m-%d %H:%M:%S%.f", "%Y-%m-%dT%H:%M:%S"] {
+    for f in [
+        "%Y-%m-%dT%H:%M:%S%.f",
+        "%Y-%m-%d %H:%M:%S%.f",
+        "%Y-%m-%dT%H:%M:%S",
+    ] {
         if let Ok(n) = NaiveDateTime::parse_from_str(s, f) {
             return Some(TimeValue::naive(n));
         }
     }
     // ISO with compact offset (+0200)
-    DateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%z").ok().map(TimeValue::from_datetime)
+    DateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%z")
+        .ok()
+        .map(TimeValue::from_datetime)
 }
 
 /// Best-effort parse of any known textual date.
 pub fn parse_any(s: &str) -> Option<TimeValue> {
-    parse_iso(s).or_else(|| parse_pdf(s)).or_else(|| parse_exif(s, None))
+    parse_iso(s)
+        .or_else(|| parse_pdf(s))
+        .or_else(|| parse_exif(s, None))
         .or_else(|| {
             // exiftool style "2023:05:01 12:00:00+02:00"
             let s = s.trim();
@@ -171,6 +198,9 @@ mod tests {
     }
     #[test]
     fn ambiguous_ordering_key_present() {
-        assert!(parse_exif("2023:05:01 12:00:00", None).unwrap().sort_key().is_some());
+        assert!(parse_exif("2023:05:01 12:00:00", None)
+            .unwrap()
+            .sort_key()
+            .is_some());
     }
 }

@@ -24,13 +24,18 @@ pub fn extract(path: &Path, fmt: &FormatInfo, opts: &Options, ex: &mut Extractio
             ex.warnings.extend(l.warnings);
             ex.unavailable.extend(l.unavailable);
         }
-        Err(_) => ex.warn("native", "internal parser failure on malformed input (file may be corrupt)"),
+        Err(_) => ex.warn(
+            "native",
+            "internal parser failure on malformed input (file may be corrupt)",
+        ),
     }
 }
 
 fn dispatch(path: &Path, fmt: &FormatInfo, opts: &Options, ex: &mut Extraction) {
     match fmt.id.as_str() {
-        "jpeg" | "png" | "gif" | "bmp" | "webp" | "tiff" | "heic" | "raw-raf" | "raw-cr3" => image::extract(path, &fmt.id, opts, ex),
+        "jpeg" | "png" | "gif" | "bmp" | "webp" | "tiff" | "heic" | "raw-raf" | "raw-cr3" => {
+            image::extract(path, &fmt.id, opts, ex)
+        }
         "docx" | "xlsx" | "pptx" | "odt" | "ods" | "odp" | "epub" => {
             ooxml::extract(path, &fmt.id, opts, ex);
             // OOXML/ODF/EPUB are ZIP containers; surface container-level indicators too.
@@ -38,11 +43,20 @@ fn dispatch(path: &Path, fmt: &FormatInfo, opts: &Options, ex: &mut Extraction) 
         }
         "pdf" => pdf::extract(path, opts, ex),
         "zip" | "gzip" | "tar" => archive::extract(path, &fmt.id, opts, ex, false),
-        "7z" | "rar" | "bzip2" | "xz" => ex.unavailable.push(format!("{} archive listing is not implemented", fmt.id)),
-        "ole2" => ex.unavailable.push("legacy Office (OLE2) properties need exiftool".into()),
+        "7z" | "rar" | "bzip2" | "xz" => ex
+            .unavailable
+            .push(format!("{} archive listing is not implemented", fmt.id)),
+        "ole2" => ex
+            .unavailable
+            .push("legacy Office (OLE2) properties need exiftool".into()),
         _ => {}
     }
-    if matches!(fmt.category, Category::Text | Category::Source) || matches!(fmt.id.as_str(), "html" | "xml" | "markdown" | "csv" | "tsv" | "json" | "svg" | "rtf") {
+    if matches!(fmt.category, Category::Text | Category::Source)
+        || matches!(
+            fmt.id.as_str(),
+            "html" | "xml" | "markdown" | "csv" | "tsv" | "json" | "svg" | "rtf"
+        )
+    {
         text::extract(path, &fmt.id, opts, ex);
     }
 }

@@ -1,0 +1,13 @@
+[package]
+name = "metadata-testkit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+description = "Synthetic fixture builders for tests (dev-only)"
+
+[dependencies]
+zip = "4"
+tar = "0.4"
+flate2 = "1"

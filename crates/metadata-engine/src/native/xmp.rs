@@ -14,25 +14,37 @@ pub fn parse(xml: &str) -> Vec<(String, String)> {
                 if name == "rdf:Description" {
                     for a in e.attributes().flatten() {
                         let k = String::from_utf8_lossy(a.key.as_ref()).to_string();
-                        if k.starts_with("xmlns") || k.starts_with("rdf:") || k.starts_with("x:") { continue; }
-                        if let Ok(v) = a.unescape_value() { out.push((k, v.to_string())); }
+                        if k.starts_with("xmlns") || k.starts_with("rdf:") || k.starts_with("x:") {
+                            continue;
+                        }
+                        if let Ok(v) = a.unescape_value() {
+                            out.push((k, v.to_string()));
+                        }
                     }
                 }
                 stack.push(name);
                 text.clear();
             }
             Ok(Event::Text(t)) => {
-                if let Ok(s) = t.decode() { text.push_str(&s); }
+                if let Ok(s) = t.decode() {
+                    text.push_str(&s);
+                }
             }
             Ok(Event::End(_)) => {
                 if let Some(name) = stack.pop() {
                     let v = text.trim();
-                    let structural = ["rdf:", "x:", "xmpmeta"].iter().any(|p| name.starts_with(p));
+                    let structural = ["rdf:", "x:", "xmpmeta"]
+                        .iter()
+                        .any(|p| name.starts_with(p));
                     if !v.is_empty() && !structural && name.contains(':') {
                         // list items (rdf:li) carry values for their parent property
                         out.push((name, v.to_string()));
                     } else if !v.is_empty() && name == "rdf:li" {
-                        if let Some(parent) = stack.iter().rev().find(|s| s.contains(':') && !s.starts_with("rdf:")) {
+                        if let Some(parent) = stack
+                            .iter()
+                            .rev()
+                            .find(|s| s.contains(':') && !s.starts_with("rdf:"))
+                        {
                             out.push((parent.clone(), v.to_string()));
                         }
                     }
@@ -47,7 +59,10 @@ pub fn parse(xml: &str) -> Vec<(String, String)> {
     let mut merged: Vec<(String, String)> = Vec::new();
     for (k, v) in out {
         if let Some(e) = merged.iter_mut().find(|(mk, _)| *mk == k) {
-            if !e.1.split(", ").any(|x| x == v) { e.1.push_str(", "); e.1.push_str(&v); }
+            if !e.1.split(", ").any(|x| x == v) {
+                e.1.push_str(", ");
+                e.1.push_str(&v);
+            }
         } else {
             merged.push((k, v));
         }

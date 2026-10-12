@@ -920,6 +920,7 @@ dependencies = [
  "metadata-core",
  "metadata-engine",
  "metadata-forensics",
+ "metadata-testkit",
  "predicates",
  "rayon",
  "serde",
@@ -951,6 +952,7 @@ dependencies = [
  "kamadak-exif",
  "lopdf",
  "metadata-core",
+ "metadata-testkit",
  "quick-xml",
  "rayon",
  "serde",
@@ -969,9 +971,19 @@ dependencies = [
  "chrono",
  "metadata-core",
  "metadata-engine",
+ "metadata-testkit",
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "metadata-testkit"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "tar",
+ "zip",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 use crate::{MetaError, Result};
-use sha2::{Digest, Sha256, Sha512};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256, Sha512};
 use std::io::Read;
 use std::path::Path;
 
@@ -13,7 +13,10 @@ pub enum Algorithm {
 
 impl Algorithm {
     pub fn name(self) -> &'static str {
-        match self { Algorithm::Sha256 => "sha256", Algorithm::Sha512 => "sha512" }
+        match self {
+            Algorithm::Sha256 => "sha256",
+            Algorithm::Sha512 => "sha512",
+        }
     }
 }
 
@@ -27,7 +30,9 @@ pub fn digest_file(path: &Path, alg: Algorithm) -> Result<String> {
             let mut buf = vec![0u8; 1 << 16];
             loop {
                 let n = f.read(&mut buf).map_err(|e| MetaError::io(path, e))?;
-                if n == 0 { break; }
+                if n == 0 {
+                    break;
+                }
                 h.update(&buf[..n]);
             }
             Ok(hex::encode(h.finalize()))

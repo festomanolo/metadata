@@ -31,7 +31,12 @@ pub enum Fmt {
 
 impl Fmt {
     pub fn parse(s: &str) -> Option<Fmt> {
-        match s { "human" => Some(Fmt::Human), "json" => Some(Fmt::Json), "csv" => Some(Fmt::Csv), _ => None }
+        match s {
+            "human" => Some(Fmt::Human),
+            "json" => Some(Fmt::Json),
+            "csv" => Some(Fmt::Csv),
+            _ => None,
+        }
     }
 }
 

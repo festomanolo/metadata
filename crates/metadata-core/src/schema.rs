@@ -78,9 +78,20 @@ impl Field {
 pub fn is_sensitive_name(name: &str) -> bool {
     let n = name.to_ascii_lowercase();
     n.starts_with("gps")
-        || ["author", "creator", "lastmodifiedby", "lastsavedby", "artist", "owner", "serial", "copyright", "email", "username"]
-            .iter()
-            .any(|k| n.contains(k))
+        || [
+            "author",
+            "creator",
+            "lastmodifiedby",
+            "lastsavedby",
+            "artist",
+            "owner",
+            "serial",
+            "copyright",
+            "email",
+            "username",
+        ]
+        .iter()
+        .any(|k| n.contains(k))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -171,8 +182,7 @@ impl FileReport {
         self.fields
             .iter()
             .filter(|f| {
-                f.name.eq_ignore_ascii_case(n)
-                    && g.is_none_or(|g| f.group.eq_ignore_ascii_case(g))
+                f.name.eq_ignore_ascii_case(n) && g.is_none_or(|g| f.group.eq_ignore_ascii_case(g))
             })
             .collect()
     }
