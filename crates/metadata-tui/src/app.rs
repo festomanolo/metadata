@@ -834,15 +834,21 @@ impl App {
         };
         let f = self.current().unwrap().fields[i].clone();
         if f.sensitive && !self.reveal {
-            self.status = "Value is hidden: press r to reveal before copying personal/location data.".into();
+            self.status =
+                "Value is hidden: press r to reveal before copying personal/location data.".into();
             return;
         }
-        self.status = format!("Copied {} to clipboard (terminal OSC 52; support varies).", f.key());
+        self.status = format!(
+            "Copied {} to clipboard (terminal OSC 52; support varies).",
+            f.key()
+        );
         self.clipboard = Some(f.raw);
     }
 
     fn export_selected(&mut self) {
-        let Some(r) = self.current().cloned() else { return };
+        let Some(r) = self.current().cloned() else {
+            return;
+        };
         let mut r = r;
         if !self.reveal {
             for f in r.fields.iter_mut().filter(|f| f.sensitive) {
@@ -851,14 +857,20 @@ impl App {
                 f.time = None;
             }
         }
-        let stem = Path::new(&r.path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        let stem = Path::new(&r.path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
         let mut out = PathBuf::from(format!("{stem}.metadata.json"));
         let mut n = 2;
         while out.exists() {
             out = PathBuf::from(format!("{stem}.metadata-{n}.json"));
             n += 1;
         }
-        match serde_json::to_string_pretty(&r).map_err(|e| e.to_string()).and_then(|s| std::fs::write(&out, s).map_err(|e| e.to_string())) {
+        match serde_json::to_string_pretty(&r)
+            .map_err(|e| e.to_string())
+            .and_then(|s| std::fs::write(&out, s).map_err(|e| e.to_string()))
+        {
             Ok(()) => {
                 let m = format!("Exported {}{}", out.display(), if self.reveal { "" } else { " (personal/location values redacted)" });
                 self.status = m.clone();
