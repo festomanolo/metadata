@@ -83,7 +83,11 @@ fn exiftool_backend_writes_verifies_and_leaves_original() {
     assert_eq!(r.find("Artist")[0].raw, "Zed; $(touch pwned)");
     assert!(r.backends.iter().any(|b| b.name == "exiftool"));
     // leftover scratch dirs must be cleaned
-    let leftovers: Vec<_> = std::fs::read_dir(d.path()).unwrap().map(|x| x.unwrap().file_name().to_string_lossy().to_string()).filter(|n| n.starts_with(".tmp") || n.starts_with(".metadata-")).collect();
+    let leftovers: Vec<_> = std::fs::read_dir(d.path())
+        .unwrap()
+        .map(|x| x.unwrap().file_name().to_string_lossy().to_string())
+        .filter(|n| n.starts_with(".tmp") || n.starts_with(".metadata-"))
+        .collect();
     assert!(leftovers.is_empty(), "{leftovers:?}");
 }
 
