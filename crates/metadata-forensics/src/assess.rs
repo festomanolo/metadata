@@ -9,7 +9,7 @@ use crate::project::ProjectSummary;
 use crate::timeline::{self, rel, Event, Role, Source};
 use metadata_core::hash::{sha256_bytes, sha256_file};
 use metadata_core::{Category, ExtensionMatch, FileReport, TimeValue};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
 
