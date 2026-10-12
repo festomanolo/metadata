@@ -82,7 +82,12 @@ fn main() {
         let base = results[0].1.as_secs_f64();
         println!("run {}:", rep + 1);
         for (j, el) in &results {
-            println!("  jobs={j:<2} {:>8.1} ms  {:>7.0} files/s  speedup vs 1 job: {:.2}x", el.as_secs_f64() * 1e3, files.len() as f64 / el.as_secs_f64(), base / el.as_secs_f64());
+            println!(
+                "  jobs={j:<2} {:>8.1} ms  {:>7.0} files/s  speedup vs 1 job: {:.2}x",
+                el.as_secs_f64() * 1e3,
+                files.len() as f64 / el.as_secs_f64(),
+                base / el.as_secs_f64()
+            );
         }
     }
     let t = Instant::now();
