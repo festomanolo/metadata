@@ -85,6 +85,5 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 - Archive entry timestamps (ZIP DOS time) have no timezone → naive `TimeValue`.
 
 ## Next steps (in order)
-1. M3: TUI (ratatui+crossterm) — `metadata tui` command, new crate `metadata-tui`.
-2. M6: HTML/CSV report for `assess` (metadata-report crate), SQLite cases (metadata-storage).
+1. M6: HTML/CSV report for `assess` (metadata-report crate), SQLite cases (metadata-storage).
 3. M7: benches, README/CLI ref/format matrix/safety+methodology docs, audit.
