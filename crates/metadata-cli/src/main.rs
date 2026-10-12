@@ -167,7 +167,7 @@ pub(crate) struct Scanned {
     skipped: Vec<(String, String)>,
 }
 
-fn scan(ctx: &Ctx, engine: &Engine, paths: &[PathBuf], c: &Common) -> Result<Scanned> {
+pub(crate) fn scan(ctx: &Ctx, engine: &Engine, paths: &[PathBuf], c: &Common) -> Result<Scanned> {
     let so = scan_opts(ctx, c);
     let col = collect_files(paths, &so);
     let skipped: Vec<(String, String)> = col
