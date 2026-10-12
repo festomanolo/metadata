@@ -238,7 +238,7 @@ pub(crate) fn write_output(p: &Path, text: &str, force: bool) -> Result<()> {
     Ok(())
 }
 
-fn exit_for(reports: &[FileReport], skipped: &[(String, String)]) -> i32 {
+pub(crate) fn exit_for(reports: &[FileReport], skipped: &[(String, String)]) -> i32 {
     if reports.iter().any(|r| r.error.is_some()) || !skipped.is_empty() {
         EXIT_PARTIAL
     } else {
