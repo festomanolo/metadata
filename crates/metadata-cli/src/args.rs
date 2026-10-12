@@ -75,6 +75,12 @@ pub struct Common {
     /// Per external tool timeout (seconds)
     #[arg(long)]
     pub timeout: Option<u64>,
+    /// Directory name to skip while walking (repeatable)
+    #[arg(long, value_name = "DIR")]
+    pub exclude: Vec<String>,
+    /// Include `.git` internals when walking (excluded by default)
+    #[arg(long)]
+    pub include_vcs: bool,
     /// Only show fields whose group, name or value contains TEXT
     #[arg(long, value_name = "TEXT")]
     pub filter: Option<String>,
