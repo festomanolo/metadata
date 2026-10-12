@@ -519,3 +519,133 @@ fn rule_ext_mismatch(c: &mut Ctx) {
     }
 }
 
+fn skip_dup(p: &str) -> bool {
+    p.split('/').any(|c| matches!(c, ".git" | "node_modules" | "target" | "__pycache__"))
+}
+
+fn rule_duplicates(c: &mut Ctx) {
+    let mut by: BTreeMap<&str, Vec<String>> = BTreeMap::new();
+    for r in c.i.reports.iter().filter(|r| r.size > 0) {
+        let rp = rel(c.i.root, &r.path);
+        if skip_dup(&rp) {
+            continue;
+        }
+        if let Some(h) = &r.sha256 {
+            by.entry(h.as_str()).or_default().push(rp);
+        }
+    }
+    for (h, files) in by.into_iter().filter(|(_, f)| f.len() > 1) {
+        c.push(Draft {
+            rule: "DUP-CONTENT",
+            title: format!("{} files have identical content", files.len()),
+            severity: Severity::Info,
+            priority: 1,
+            evidence: files.iter().map(|f| Evidence { file: f.clone(), field: "sha256".into(), value: h.into(), source: Source::Embedded }).collect(),
+            comparison_rule: "equal SHA-256".into(),
+            explanation: "These paths contain byte-identical content.".into(),
+            benign: vec!["Intentional copies, backups, shared assets or build outputs."],
+            obs: Confidence::High,
+            interp: Confidence::Low,
+            follow_up: "No action unless duplicates are unexpected for this project.",
+        });
+    }
+}
+
+fn rule_missing_metadata(c: &mut Ctx) {
+    let mut docs = vec![];
+    let mut photos = vec![];
+    let mut pdfs = vec![];
+    for r in c.i.reports.iter().filter(|r| r.error.is_none()) {
+        let rp = rel(c.i.root, &r.path);
+        let has = |names: &[&str]| names.iter().any(|n| !r.find(n).is_empty());
+        match r.format.id.as_str() {
+            "docx" | "xlsx" | "pptx" | "odt" | "ods" | "odp" if !has(&["Created", "CreationDate"]) => docs.push(rp),
+            "pdf" if !has(&["CreationDate"]) => pdfs.push(rp),
+            "jpeg" | "tiff" | "heic" if !has(&["DateTimeOriginal", "DateTime", "DateTimeDigitized"]) => photos.push(rp),
+            _ => {}
+        }
+    }
+    for (label, files, field) in [("office/ODF documents", docs, "creation date"), ("PDF files", pdfs, "CreationDate"), ("photos", photos, "capture/modify date")] {
+        if files.is_empty() {
+            continue;
+        }
+        c.push(Draft {
+            rule: "MISS-METADATA",
+            title: format!("{} {label} have no {field} metadata", files.len()),
+            severity: Severity::Info,
+            priority: 1,
+            evidence: files.iter().map(|f| Evidence { file: f.clone(), field: field.into(), value: "absent".into(), source: Source::Embedded }).collect(),
+            comparison_rule: "format normally exposes the field but it is absent".into(),
+            explanation: "Absence of metadata limits what can be said about these files; it is not evidence of anything by itself.".into(),
+            benign: vec!["Messaging apps, web uploads, privacy settings and some exporters remove metadata.", "Some tools simply never write it."],
+            obs: Confidence::High,
+            interp: Confidence::Low,
+            follow_up: "None required; consider other evidence sources.",
+        });
+    }
+}
+
+fn rule_incremental(c: &mut Ctx, start: &Option<DayRange>, deadline: &Option<DayRange>, completion: &Option<DayRange>) {
+    let mut ev_list = vec![];
+    for r in c.i.reports {
+        let f = rel(c.i.root, &r.path);
+        let num = |n: &str| r.find(n).first().and_then(|x| x.raw.parse::<u64>().ok()).unwrap_or(0);
+        let (rev, tracked) = (num("Revision"), num("TrackedInsertions") + num("TrackedDeletions"));
+        let pdf_rev = if r.format.id == "pdf" { num("Revisions") } else { 0 };
+        if rev > 1 {
+            ev_list.push(Evidence { file: f.clone(), field: "OOXML-Core:Revision".into(), value: rev.to_string(), source: Source::Embedded });
+        }
+        if tracked > 0 {
+            ev_list.push(Evidence { file: f.clone(), field: "Document:TrackedChanges".into(), value: tracked.to_string(), source: Source::Embedded });
+        }
+        if pdf_rev > 1 {
+            ev_list.push(Evidence { file: f, field: "PDF:Revisions".into(), value: pdf_rev.to_string(), source: Source::Embedded });
+        }
+    }
+    let git_n = c.i.git.map(|g| g.commits.len()).unwrap_or(0);
+    if git_n > 1 {
+        ev_list.push(Evidence { file: "(git)".into(), field: "commits".into(), value: git_n.to_string(), source: Source::Git });
+    }
+    if !ev_list.is_empty() {
+        c.push(Draft {
+            rule: "INC-PRESENT",
+            title: "Evidence of incremental changes is present".into(),
+            severity: Severity::Info,
+            priority: 1,
+            evidence: ev_list,
+            comparison_rule: "revision counters, tracked changes, PDF incremental updates, git commits".into(),
+            explanation: "These indicators show files were saved or updated more than once. They say nothing about the duration or amount of work.".into(),
+            benign: vec!["Revision counters are application-specific and not an editing duration."],
+            obs: Confidence::High,
+            interp: Confidence::Low,
+            follow_up: "None required.",
+        });
+    } else if let (Some(s), Some(e)) = (start, deadline.as_ref().or(completion.as_ref())) {
+        if (e.end - s.start) / 86_400 >= 30 && !c.i.reports.is_empty() {
+            c.push(Draft {
+                rule: "INC-ABSENT",
+                title: "No incremental-change evidence found for a long claimed work period".into(),
+                severity: Severity::Info,
+                priority: 2,
+                evidence: vec![Evidence { file: "(project)".into(), field: "claimed period".into(), value: format!("{} days", (e.end - s.start) / 86_400), source: Source::Declared }],
+                comparison_rule: "claimed period ≥ 30 days and no revisions, tracked changes, PDF updates or git history".into(),
+                explanation: "Nothing in the submitted files shows intermediate saves.".into(),
+                benign: vec!["Work may have been done in tools that do not record history, or only final exports were submitted."],
+                obs: Confidence::Medium,
+                interp: Confidence::Low,
+                follow_up: "Ask for working files or earlier milestone submissions.",
+            });
+        }
+    }
+}
+
+fn rule_git(c: &mut Ctx, g: &GitHistory, start: &Option<DayRange>, deadline: &Option<DayRange>, now: &Option<T>) {
+    if g.commits.is_empty() {
+        return;
+    }
+    let th = c.i.thresholds;
+    let secs = |tv: &TimeValue| tv.sort_key().unwrap_or(0);
+    let first = g.commits.iter().min_by_key(|c| secs(&c.author_date)).unwrap();
+    let last = g.commits.iter().max_by_key(|c| secs(&c.author_date)).unwrap();
+    let gev = |cm: &crate::git::Commit, f: &str| Evidence { file: format!("git:{}", &cm.hash[..10.min(cm.hash.len())]), field: f.into(), value: cm.author_date.iso.clone(), source: Source::Git };
+    if let Some(s) = start {
