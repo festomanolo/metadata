@@ -38,7 +38,10 @@ fn main() {
             1 => (format!("d{}/f{i}.jpg", i % 20), jpg.clone()),
             2 => (format!("d{}/f{i}.pdf", i % 20), pdf.clone()),
             3 => (format!("d{}/f{i}.zip", i % 20), zip.clone()),
-            _ => (format!("d{}/f{i}.txt", i % 20), format!("file number {i}\n").repeat(50).into_bytes()),
+            _ => (
+                format!("d{}/f{i}.txt", i % 20),
+                format!("file number {i}\n").repeat(50).into_bytes(),
+            ),
         };
         let p = d.path().join(name);
         std::fs::create_dir_all(p.parent().unwrap()).unwrap();
