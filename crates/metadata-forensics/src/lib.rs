@@ -1,3 +1,5 @@
-//! Forensic building blocks: integrity manifests, comparison (timeline & assessment follow).
+//! Forensic building blocks: integrity manifests, comparison, timelines, git history and assessment.
+pub mod assess;
+pub mod claims;
 pub mod compare;
 pub mod manifest;
