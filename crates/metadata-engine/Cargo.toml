@@ -1,0 +1,23 @@
+[package]
+name = "metadata-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+flate2 = "1.1.10"
+kamadak-exif = "0.6.1"
+lopdf = "0.36.0"
+metadata-core = { version = "0.1.0", path = "../metadata-core" }
+quick-xml = "0.41.0"
+rayon = "1.12.0"
+serde = "1.0.229"
+serde_json = "1.0.154"
+tar = "0.4.46"
+thiserror = "2.0.21"
+walkdir = "2.5.0"
+zip = "4.2.0"
+
+[dev-dependencies]
+tempfile = "3.27.0"
