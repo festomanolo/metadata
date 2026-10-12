@@ -214,6 +214,38 @@ pub enum Cmd {
         #[command(flatten)]
         c: Common,
     },
+    /// Edit metadata fields safely (writes a new file unless --in-place; always re-reads and verifies)
+    Edit {
+        #[arg(required = true)]
+        paths: Vec<PathBuf>,
+        /// Set a field: `Group:Name=value` or `Name=value` (repeatable)
+        #[arg(long, value_name = "KEY=VALUE")]
+        set: Vec<String>,
+        /// Remove a field (repeatable)
+        #[arg(long, value_name = "KEY")]
+        remove: Vec<String>,
+        /// Copy every natively writable, non-date field from this file
+        #[arg(long, value_name = "FILE")]
+        copy_from: Option<PathBuf>,
+        /// Choose fields interactively (reads commands from stdin)
+        #[arg(long)]
+        interactive: bool,
+        #[command(flatten)]
+        w: WriteOpts,
+        #[command(flatten)]
+        c: Common,
+    },
+    /// Remove metadata by profile (privacy | all | gps); writes a new file unless --in-place
+    Clean {
+        #[arg(required = true)]
+        paths: Vec<PathBuf>,
+        #[arg(long, value_parser = ["privacy", "all", "gps"], default_value = "privacy")]
+        profile: String,
+        #[command(flatten)]
+        w: WriteOpts,
+        #[command(flatten)]
+        c: Common,
+    },
     /// Show format support and which backend handles each format
     Capabilities {
         #[arg(short, long, value_enum)]
@@ -233,4 +265,27 @@ pub enum Cmd {
         #[arg(long)]
         init: bool,
     },
+}
+
+/// Options shared by commands that write files.
+#[derive(Args, Clone)]
+pub struct WriteOpts {
+    /// Show the plan and exit without writing anything
+    #[arg(long)]
+    pub dry_run: bool,
+    /// Modify the original file (a backup is kept unless --no-backup)
+    #[arg(long)]
+    pub in_place: bool,
+    /// Skip the backup copy when using --in-place
+    #[arg(long)]
+    pub no_backup: bool,
+    /// Directory for outputs when editing several files
+    #[arg(long, value_name = "DIR")]
+    pub output_dir: Option<PathBuf>,
+    /// Confirm in-place or multi-file writes without prompting
+    #[arg(short, long)]
+    pub yes: bool,
+    /// Proceed even though the file looks digitally signed (the signature will be invalidated)
+    #[arg(long)]
+    pub accept_signature_loss: bool,
 }
