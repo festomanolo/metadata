@@ -25,7 +25,7 @@ Legend: DONE (works + tested) · PARTIAL · PLANNED
 | Extraction | PDF: Info dict, XMP, revisions, sig/JS/launch/embedded indicators | DONE | `native/pdf.rs` (lopdf) |
 | Extraction | Archives: zip/tar/tgz/gzip listing, traversal/symlink/ratio/entry limits, nested (--deep) | DONE | never extracts to disk |
 | Extraction | Text/source/HTML/XML/CSV/JSON/RTF | DONE | `native/text.rs` |
-| Extraction | ExifTool adapter (read) | PARTIAL | code + JSON-parse tests; not run against real exiftool (not installed) |
+| Extraction | ExifTool adapter (read) | PARTIAL | JSON-parse unit tests + stub-script tests (`metadata-edit/tests/exiftool_stub.rs`); never run against real exiftool |
 | Extraction | FFprobe adapter (read) | PARTIAL | same as above |
 | Extraction | Legacy OLE2 doc/xls/ppt, 7z/rar listing, video/audio w/o tools | PLANNED | reported as `unavailable`, not faked |
 | Extraction | Source-project inspection (manifests, git history) | PLANNED | for directories; needs git subprocess |
