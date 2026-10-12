@@ -197,19 +197,37 @@ impl Store {
         for r in rows {
             let (id, case_id, label, root, ingested_at, aj) = db(r)?;
             let a: Option<Assessment> = serde_json::from_str(&aj).ok();
-            out.push(SubmissionRow { id, case_id, label, root, ingested_at, files: a.as_ref().map(|a| a.inventory.len() as i64).unwrap_or(0), findings: a.as_ref().map(|a| a.findings.len() as i64).unwrap_or(0) });
+            out.push(SubmissionRow {
+                id,
+                case_id,
+                label,
+                root,
+                ingested_at,
+                files: a.as_ref().map(|a| a.inventory.len() as i64).unwrap_or(0),
+                findings: a.as_ref().map(|a| a.findings.len() as i64).unwrap_or(0),
+            });
         }
         Ok(out)
     }
 
     pub fn assessment(&self, submission: i64) -> Result<Assessment> {
-        let s: String = db(self.conn.query_row("SELECT assessment_json FROM submissions WHERE id = ?1", [submission], |r| r.get(0)))?;
-        serde_json::from_str(&s).map_err(|e| MetaError::Other(format!("stored assessment unreadable: {e}")))
+        let s: String = db(self.conn.query_row(
+            "SELECT assessment_json FROM submissions WHERE id = ?1",
+            [submission],
+            |r| r.get(0),
+        ))?;
+        serde_json::from_str(&s)
+            .map_err(|e| MetaError::Other(format!("stored assessment unreadable: {e}")))
     }
 
     pub fn reports(&self, submission: i64) -> Result<Vec<FileReport>> {
-        let s: String = db(self.conn.query_row("SELECT reports_json FROM submissions WHERE id = ?1", [submission], |r| r.get(0)))?;
-        serde_json::from_str(&s).map_err(|e| MetaError::Other(format!("stored metadata unreadable: {e}")))
+        let s: String = db(self.conn.query_row(
+            "SELECT reports_json FROM submissions WHERE id = ?1",
+            [submission],
+            |r| r.get(0),
+        ))?;
+        serde_json::from_str(&s)
+            .map_err(|e| MetaError::Other(format!("stored metadata unreadable: {e}")))
     }
 
     pub fn latest_submission(&self, case: &str) -> Result<Option<i64>> {
